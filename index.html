@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>파이오니어 121 체크</title>
+<style>
+:root{--bg:#f7f8fa;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e5e7eb;--pr:#c8102e;--ok:#15803d}
+@media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1d2026;--tx:#eef0f3;--mu:#9aa3af;--bd:#2c313a;--pr:#ff5a73;--ok:#4ade80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+.w{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0 2px}
+.sub{color:var(--mu);font-size:14px;margin:0 0 12px}
+.top{position:sticky;top:0;background:var(--bg);padding:8px 0;z-index:5;border-bottom:1px solid var(--bd)}
+select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx)}
+.bar{height:8px;background:var(--bd);border-radius:6px;margin:10px 0 4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .2s}
+.stat{font-size:14px;color:var(--mu)}
+.row{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
+.nm{font-weight:700}.co{color:var(--mu);font-size:13px}
+.lv{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:8px}
+.lv button{padding:10px 0;border:1px solid var(--bd);background:transparent;color:var(--tx);border-radius:8px;font-size:13px;cursor:pointer}
+.lv button.on{background:var(--pr);border-color:var(--pr);color:#fff;font-weight:700}
+.lv button.on.l0{background:var(--mu);border-color:var(--mu)}
+.save{position:sticky;bottom:0;background:var(--bg);padding:10px 0}
+.save button{width:100%;padding:14px;font-size:17px;font-weight:700;border:0;border-radius:12px;background:var(--pr);color:#fff;cursor:pointer}
+.save button:disabled{opacity:.5}
+.msg{text-align:center;font-size:14px;margin-top:6px;min-height:20px}
+.guide{font-size:13px;color:var(--mu);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:10px 0}
+</style>
+</head>
+<body>
+<div class="w">
+  <h1>121 체크</h1>
+  <p class="sub">누구와 어느 단계까지 121을 했는지 스스로 체크해요. 저장하면 구글시트에 모입니다.</p>
+  <div class="top">
+    <select id="me"><option value="">내 이름을 선택하세요</option></select>
+    <div id="sum" hidden>
+      <div class="bar"><i id="barI"></i></div>
+      <div class="stat" id="stat"></div>
+    </div>
+  </div>
+  <div id="body" hidden>
+    <div class="guide"><b>아는</b> 신상·기본 질문 / <b>신뢰</b> 신뢰 단계 질문지까지 / <b>수익</b> 수익 단계까지 / <b>패스포트</b> 패스포트까지. 높은 단계를 누르면 앞 단계도 한 것으로 봅니다.</div>
+    <input type="search" id="q" placeholder="이름·회사 검색">
+    <div id="list"></div>
+    <div class="save"><button id="sv">저장하기</button><div class="msg" id="msg"></div></div>
+  </div>
+</div>
+<script>
+// 구글 Apps Script 웹앱 주소(tools/121check-apps-script.gs 배포 후 붙여넣기). 비워 두면 이 기기에만 저장됩니다.
+const SHEET_URL = "";
+const LV = ["아직","아는","신뢰","수익","패스포트"];
+const MEMBERS = /*MEMBERS*/[{"n":"이소연","co":"해피드로잉","f":"미술교육"},{"n":"이해경","co":"데일카네기","f":"교육"},{"n":"이채홍","co":"법무사사무소 검인","f":"법무사(형사사건전문)"},{"n":"박선영","co":"㈜경동코퍼레이션","f":"안전용품(작업화/작업복/실리콘)"},{"n":"김경태","co":"늘곁애","f":"상조서비스"},{"n":"심학봉","co":"㈜더베스트 금융서비스","f":"손해보험"},{"n":"최경수","co":"옆커폰","f":"휴대폰/통신"},{"n":"조현우","co":"디에이치원","f":"고용지원금"},{"n":"김근우","co":"종합광고기획 창운","f":"인쇄,디자인"},{"n":"홍정택","co":"스타인컴퍼니","f":"경호"},{"n":"정명수","co":"에어컨설팅","f":"에어컨 설치관리"},{"n":"박진성","co":"(주)진성부동산중개법인","f":"부동산중개 및 컨설팅"},{"n":"김지현","co":"감성온도","f":"숙박업(컨설팅)"},{"n":"이상호","co":"㈜디자인시선","f":"인테리어(숙박,병원,상가)"},{"n":"조은영","co":"에어월드시스템BS","f":"냉동공조&실내공기정화솔루션"},{"n":"송승훈","co":"T.M LINK","f":"앱,웹개발(디지탈명함)"},{"n":"박미성","co":"울림 컴퍼니","f":"경영컨설팅"},{"n":"이도현","co":"AIA프리미어 파트너","f":"생명보험"},{"n":"정상현","co":"아메리츠파이낸셜","f":"외국보험"},{"n":"이화춘","co":"이화춘뷰티랩","f":"반영구 뷰티"},{"n":"마루이","co":"벨라우모","f":"맞춤수제양복"},{"n":"윤민수","co":"㈜이엘그룹","f":"태닝"},{"n":"김윤호","co":"㈜거북축산","f":"축산물 유통"},{"n":"문성우","co":"당고","f":"요식업(고기구이)"},{"n":"이수민","co":"새벽 한방울(황지상회)","f":"기름,곡물 가공품"},{"n":"임춘식","co":"꽃가람","f":"꽃/화환 유통"},{"n":"오예준","co":"청년커튼&블라인드 부산본점","f":"커튼,블라인드"},{"n":"박지형","co":"세움세무","f":"세무"},{"n":"박병준","co":"드로아","f":"소파,가구 제작"},{"n":"조진성","co":"에이쁠","f":"청소"},{"n":"이훈","co":"에이치컨설팅","f":"병원컨설팅"},{"n":"이은성","co":"밝은소리라이프","f":"기업행사, MC"},{"n":"김여련","co":"법무법인 시우","f":"변호사"},{"n":"최소은","co":"","f":""}]/*END*/;
+let M = MEMBERS, me = "", ans = {};
+const $ = id => document.getElementById(id);
+const key = n => "121check:" + n;
+const ls = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
+
+$("me").innerHTML += M.map(m => `<option>${m.n}</option>`).join("");
+{ const last = ls.get("121check:me"); if (last && M.some(m => m.n === last)) { $("me").value = last; pick(last); } }
+$("me").onchange = e => pick(e.target.value);
+$("q").oninput = render;
+
+async function pick(n) {
+  me = n; ans = {};
+  $("body").hidden = $("sum").hidden = !n;
+  if (!n) return;
+  ls.set("121check:me", n);
+  try { ans = JSON.parse(ls.get(key(n)) || "{}"); } catch (e) {}
+  if (SHEET_URL) {
+    try {
+      const r = await fetch(SHEET_URL + "?me=" + encodeURIComponent(n)).then(r => r.json());
+      if (r.ans && Object.keys(r.ans).length) ans = r.ans; // 시트가 기준
+    } catch (e) { say("시트 불러오기 실패. 이 기기 저장분을 보여줘요."); }
+  }
+  render();
+}
+
+function render() {
+  const q = $("q").value.trim();
+  const rows = M.filter(m => m.n !== me && (!q || (m.n + (m.co || "")).includes(q)));
+  $("list").innerHTML = rows.map(m => {
+    const v = ans[m.n] || 0;
+    return `<div class="row"><span class="nm">${m.n}</span> <span class="co">${m.co || ""}${m.f ? " · " + m.f : ""}</span>
+    <div class="lv">${LV.map((t, i) => `<button class="${i === v ? "on l" + i : ""}" data-n="${m.n}" data-l="${i}">${t}</button>`).join("")}</div></div>`;
+  }).join("");
+  stat();
+}
+$("list").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  ans[b.dataset.n] = +b.dataset.l;
+  ls.set(key(me), JSON.stringify(ans));
+  render();
+};
+function stat() {
+  const others = M.filter(m => m.n !== me), t = others.length;
+  const c = l => others.filter(m => (ans[m.n] || 0) >= l).length;
+  $("barI").style.width = (c(1) / t * 100) + "%";
+  $("stat").textContent = `121 한 사람 ${c(1)}/${t}명 · 신뢰 이상 ${c(2)}명 · 수익 ${c(3)}명 · 패스포트 ${c(4)}명`;
+}
+function say(s) { $("msg").textContent = s; }
+
+$("sv").onclick = async () => {
+  ls.set(key(me), JSON.stringify(ans));
+  if (!SHEET_URL) return say("이 기기에 저장했어요. (시트 주소가 아직 연결 전입니다)");
+  $("sv").disabled = true; say("저장 중…");
+  const rows = M.filter(m => m.n !== me).map(m => ({ p: m.n, lv: ans[m.n] || 0 }));
+  try {
+    await fetch(SHEET_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ me, rows }) });
+    say("저장했어요 ✓ " + new Date().toLocaleTimeString("ko-KR"));
+  } catch (e) { say("저장 실패. 잠시 후 다시 눌러 주세요."); }
+  $("sv").disabled = false;
+};
+</script>
+</body>
+</html>
