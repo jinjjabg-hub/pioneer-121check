@@ -72,7 +72,7 @@ async function pick(n) {
   if (SHEET_URL) {
     try {
       const r = await fetch(SHEET_URL + "?me=" + encodeURIComponent(n)).then(r => r.json());
-      if (r.ans && Object.keys(r.ans).length) ans = r.ans; // 시트가 기준
+      if (r.st && Object.keys(r.st).length) { ans = {}; for (const p in r.st) { const i = LV.indexOf(r.st[p]); if (i > 0) ans[p] = i; } } // 시트의 단계명이 기준
     } catch (e) { say("시트 불러오기 실패. 이 기기 저장분을 보여줘요."); }
   }
   render();
@@ -106,7 +106,7 @@ $("sv").onclick = async () => {
   ls.set(key(me), JSON.stringify(ans));
   if (!SHEET_URL) return say("이 기기에 저장했어요. (시트 주소가 아직 연결 전입니다)");
   $("sv").disabled = true; say("저장 중…");
-  const rows = M.filter(m => m.n !== me).map(m => ({ p: m.n, lv: ans[m.n] || 0 }));
+  const rows = M.filter(m => m.n !== me).map(m => ({ p: m.n, lv: ans[m.n] || 0, st: LV[ans[m.n] || 0] }));
   try {
     await fetch(SHEET_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ me, rows }) });
     say("저장했어요 ✓ " + new Date().toLocaleTimeString("ko-KR"));

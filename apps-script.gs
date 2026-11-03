@@ -24,7 +24,8 @@ function doPost(e) {
       for (let i = me.length - 1; i >= 0; i--) if (me[i][0] === d.me) s.deleteRow(i + 2);
     }
     const now = new Date();
-    const out = d.rows.filter(r => r.lv > 0).map(r => [now, d.me, r.p, r.lv, NAMES[r.lv]]);
+    // 페이지가 보낸 단계명(st)을 기준으로 번호를 정한다. 페이지·스크립트 버전이 달라도 번호와 이름이 어긋나지 않는다.
+    const out = d.rows.map(r => { const lv = r.st ? NAMES.indexOf(r.st) : r.lv; return lv > 0 ? [now, d.me, r.p, lv, NAMES[lv]] : null; }).filter(Boolean);
     if (out.length) s.getRange(s.getLastRow() + 1, 1, out.length, 5).setValues(out);
   } finally { lock.releaseLock(); }
   return ContentService.createTextOutput("ok");
@@ -32,9 +33,9 @@ function doPost(e) {
 
 // 본인 기존 체크 불러오기(본인 줄만 돌려준다)
 function doGet(e) {
-  const s = sheet_(), last = s.getLastRow(), ans = {};
-  if (last > 1) s.getRange(2, 1, last - 1, 5).getValues().forEach(r => { if (r[1] === e.parameter.me) ans[r[2]] = r[3]; });
-  return ContentService.createTextOutput(JSON.stringify({ ans })).setMimeType(ContentService.MimeType.JSON);
+  const s = sheet_(), last = s.getLastRow(), ans = {}, st = {};
+  if (last > 1) s.getRange(2, 1, last - 1, 5).getValues().forEach(r => { if (r[1] === e.parameter.me) { ans[r[2]] = r[3]; st[r[2]] = r[4]; } });
+  return ContentService.createTextOutput(JSON.stringify({ ans, st })).setMimeType(ContentService.MimeType.JSON);
 }
 
 function onOpen() {
