@@ -28,12 +28,37 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .save button:disabled{opacity:.5}
 .msg{text-align:center;font-size:14px;margin-top:6px;min-height:20px}
 .guide{font-size:13px;color:var(--mu);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px;margin:10px 0}
+.tabs{display:flex;gap:6px;margin:10px 0 4px}
+.tabs button{flex:1;padding:11px 0;border:1px solid var(--bd);background:transparent;color:var(--tx);border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--pr);border-color:var(--pr);color:#fff}
+#pane-sched{display:none}
+.w.sched #pane-sched{display:block}
+.w.sched #sum,.w.sched #body,.w.sched #subCheck{display:none!important}
+.sec{font-size:16px;font-weight:700;margin:18px 0 6px}
+.sec small{font-weight:400;color:var(--mu);font-size:13px}
+.fld{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+.fld label{font-size:13px;color:var(--mu)}
+.fld input,.fld select{width:100%;padding:11px;font-size:16px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button,.act{padding:9px 12px;border:1px solid var(--bd);background:transparent;color:var(--tx);border-radius:8px;font-size:14px;cursor:pointer}
+.chips button.on{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:700}
+.act.pr{background:var(--pr);border-color:var(--pr);color:#fff;font-weight:700}
+.act:disabled{opacity:.5}
+.sl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.sl .ac{display:flex;gap:6px}
+.tg{font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--bd);color:var(--mu);white-space:nowrap}
+.tg.ok{background:var(--ok);color:#fff}
+.day{font-size:13px;font-weight:700;color:var(--mu);margin:14px 0 2px}
+.smsg{font-size:14px;min-height:20px;margin:6px 0}
+.smsg.err{color:var(--pr)}
+.emp{font-size:14px;color:var(--mu);border:1px dashed var(--bd);border-radius:10px;padding:12px}
 </style>
 </head>
 <body>
 <div class="w">
   <h1>121 체크</h1>
-  <p class="sub">누구와 어느 단계까지 121을 했는지 스스로 체크해요. 저장하면 구글시트에 모입니다.</p>
+  <div class="tabs" id="tabs"><button class="on" data-t="check">121 체크</button><button data-t="sched">121 일정</button></div>
+  <p class="sub" id="subCheck">누구와 어느 단계까지 121을 했는지 스스로 체크해요. 저장하면 구글시트에 모입니다.</p>
   <div class="top">
     <select id="me"><option value="">내 이름을 선택하세요</option></select>
     <div id="sum" hidden>
@@ -46,6 +71,10 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
     <input type="search" id="q" placeholder="이름·회사 검색">
     <div id="list"></div>
     <div class="save"><button id="sv">저장하기</button><div class="msg" id="msg"></div></div>
+  </div>
+  <div id="pane-sched">
+    <p class="sub">만날 수 있는 시간을 열어 두면 다른 멤버가 골라 신청해요. 신청되면 두 사람 일정에 "확정"으로 남고, 열린 목록에서는 사라져요. 위에서 내 이름을 먼저 골라 주세요.</p>
+    <div id="schedBody"></div>
   </div>
 </div>
 <script>
@@ -113,6 +142,109 @@ $("sv").onclick = async () => {
   } catch (e) { say("저장 실패. 잠시 후 다시 눌러 주세요."); }
   $("sv").disabled = false;
 };
+/* ===== 121 일정 (Firebase Firestore): 시간을 열고, 신청하면 확정 ===== */
+const wrap=document.querySelector(".w"), byN=Object.fromEntries(M.map(m=>[m.n,m]));
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const SC={date:"",times:new Set(),mode:"둘 다",memo:"",msg:"",err:false};
+const SC_TIMES=["07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
+const DOWK=["일","월","화","수","목","금","토"];
+const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const fmtD=t=>{ const [y,m,d]=t.split("-").map(Number); return `${m}/${d} (${DOWK[new Date(y,m-1,d).getDay()]})`; };
+const onSched=()=>wrap.classList.contains("sched");
+function setTab(t){ wrap.classList.toggle("sched",t==="sched"); document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+  try{ history.replaceState(null,"",t==="sched"?"#sched":location.pathname+location.search); }catch(e){} if(t==="sched") renderSched(); }
+$("tabs").onclick=e=>{ const b=e.target.closest("button[data-t]"); if(b) setTab(b.dataset.t); };
+function renderSched(){
+  const body=$("schedBody"), FB=window.FB, t0=ymd(new Date());
+  if(!FB||FB.state==="loading"){ body.innerHTML='<div class="emp">일정 저장소에 연결하는 중이에요…</div>'; return; }
+  if(FB.state==="error"){ body.innerHTML=`<div class="emp">일정 저장소에 연결하지 못했어요. ${esc(FB.error||"")}<br>잠시 뒤 새로고침해 보세요. 계속되면 운영진에게 알려 주세요.</div>`; return; }
+  if(!me){ body.innerHTML='<div class="emp">위에서 <b>내 이름</b>을 먼저 골라 주세요.</div>'; return; }
+  const all=FB.slots.filter(x=>x.date>=t0).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const mine=all.filter(x=>x.owner===me||x.booker===me);
+  const mineBooked=mine.filter(x=>x.status==="booked"), mineOpen=mine.filter(x=>x.status==="open"&&x.owner===me);
+  const others=all.filter(x=>x.status==="open"&&x.owner!==me);
+  const info=n=>{ const o=byN[n]; return o?`${esc(o.co||"")}${o.f?" · "+esc(o.f):""}`:""; };
+  const myRow=x=>{ if(x.status==="booked"){ const other=x.owner===me?x.booker:x.owner;
+      return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg ok">확정</span> <span class="tg">${esc(x.mode)}</span><div class="co">${esc(other)} · ${info(other)}${x.memo?" · "+esc(x.memo):""}</div></div><div class="ac"><button class="act" data-sact="cancel" data-id="${esc(x.id)}">${x.owner===me?"신청 취소하고 다시 열기":"신청 취소"}</button>${x.owner===me?`<button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button>`:""}</div></div>`; }
+    return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg">열림</span> <span class="tg">${esc(x.mode)}</span>${x.memo?`<div class="co">${esc(x.memo)}</div>`:""}</div><button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button></div>`; };
+  const myList=[...mineBooked,...mineOpen].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const byDate={}; others.forEach(x=>(byDate[x.date]=byDate[x.date]||[]).push(x));
+  const openCard=x=>`<div class="row sl"><div><b>${esc(x.time)}</b> · <span class="nm">${esc(x.owner)}</span> <span class="tg">${esc(x.mode)}</span><div class="co">${info(x.owner)}${x.memo?" · "+esc(x.memo):""}</div></div><button class="act pr" data-sact="book" data-id="${esc(x.id)}">이 시간 신청</button></div>`;
+  body.innerHTML=`
+    <div class="sec">내가 만날 수 있는 시간 열기 <small>(${esc(me)} 이름으로 저장돼요)</small></div>
+    <div class="row">
+      <div class="fld"><label for="scDate">날짜</label><input type="date" id="scDate" min="${t0}" value="${esc(SC.date)}"></div>
+      <div class="fld"><label>시작 시간 (여러 개 고를 수 있어요)</label><div class="chips">${SC_TIMES.map(t=>`<button class="${SC.times.has(t)?"on":""}" data-sact="time" data-v="${t}">${t}</button>`).join("")}</div></div>
+      <div class="fld"><label for="scMode">방식</label><select id="scMode">${["둘 다","대면","온라인"].map(m=>`<option${SC.mode===m?" selected":""}>${m}</option>`).join("")}</select></div>
+      <div class="fld"><label for="scMemo">장소·메모 (선택)</label><input type="text" id="scMemo" maxlength="80" placeholder="예: 서면 사무실, 점심 같이 가능" value="${esc(SC.memo)}"></div>
+      <button class="act pr" style="width:100%;padding:13px;font-size:16px" data-sact="open">이 시간들 열기</button>
+      <div class="smsg${SC.err?" err":""}" role="status">${esc(SC.msg)}</div>
+    </div>
+    <div class="sec">내 일정 <small>${mineBooked.length}건 확정 · ${mineOpen.length}건 열림</small></div>
+    ${myList.length?myList.map(myRow).join(""):'<div class="emp">아직 일정이 없어요. 위에서 시간을 열거나, 아래에서 다른 멤버의 시간을 신청해 보세요.</div>'}
+    <div class="sec">다른 멤버가 열어 둔 시간 <small>${others.length}개</small></div>
+    ${Object.keys(byDate).sort().map(d=>`<div class="day">${fmtD(d)}</div>${byDate[d].map(openCard).join("")}`).join("")||'<div class="emp">지금 열려 있는 시간이 없어요. 먼저 내 시간을 열어 보세요.</div>'}`;
+}
+$("pane-sched").addEventListener("input",e=>{ if(e.target.id==="scDate") SC.date=e.target.value; else if(e.target.id==="scMode") SC.mode=e.target.value; else if(e.target.id==="scMemo") SC.memo=e.target.value; });
+$("pane-sched").addEventListener("click",async e=>{
+  const b=e.target.closest("button[data-sact]"); if(!b) return;
+  const FB=window.FB, act=b.dataset.sact, sayS=(m,err)=>{ SC.msg=m; SC.err=!!err; renderSched(); };
+  if(act==="time"){ const v=b.dataset.v; SC.times.has(v)?SC.times.delete(v):SC.times.add(v); renderSched(); return; }
+  if(!FB||FB.state!=="ready") return sayS("저장소에 연결된 뒤에 다시 눌러 주세요.",true);
+  if(!me) return sayS("위에서 내 이름을 먼저 골라 주세요.",true);
+  b.disabled=true;
+  try{
+    if(act==="open"){
+      if(!SC.date) throw new Error("날짜를 먼저 골라 주세요.");
+      if(SC.date<ymd(new Date())) throw new Error("지난 날짜는 열 수 없어요.");
+      if(!SC.times.size) throw new Error("시작 시간을 하나 이상 골라 주세요.");
+      const times=[...SC.times].sort(), have=new Set(FB.slots.filter(x=>x.owner===me&&x.date===SC.date).map(x=>x.time));
+      const busy=new Set(FB.slots.filter(x=>x.status==="booked"&&x.date===SC.date&&(x.owner===me||x.booker===me)).map(x=>x.time));
+      const add=times.filter(t=>!have.has(t)&&!busy.has(t));
+      if(!add.length) throw new Error("고른 시간은 이미 열려 있거나 확정된 시간이에요.");
+      await FB.open(me,SC.date,add,SC.mode,SC.memo.trim());
+      SC.times=new Set(); sayS(`${fmtD(SC.date)} ${add.join(", ")} 시간을 열었어요.${add.length<times.length?` (이미 있는 ${times.length-add.length}개는 건너뜀)`:""}`);
+    }else if(act==="book"){
+      const x=FB.slots.find(z=>z.id===b.dataset.id); if(!x) throw new Error("이 일정은 이미 사라졌어요.");
+      if(FB.slots.some(z=>z.status==="booked"&&z.date===x.date&&z.time===x.time&&(z.owner===me||z.booker===me))) throw new Error("같은 시간에 이미 확정된 일정이 있어요.");
+      await FB.book(x.id,me); sayS(`${x.owner} 대표님과 ${fmtD(x.date)} ${x.time} 일정이 확정됐어요.`);
+    }else if(act==="cancel"){ await FB.cancel(b.dataset.id,me); sayS("신청을 취소했어요."); }
+    else if(act==="del"){ if(!confirm("이 시간을 삭제할까요? 확정된 일정이면 상대 일정에서도 사라져요.")){ b.disabled=false; return; } await FB.del(b.dataset.id); sayS("삭제했어요."); }
+  }catch(err){ const m=err&&err.message||""; sayS(/permission|insufficient/i.test(m)?"저장이 거절됐어요. 그 사이에 일정이 바뀌었을 수 있어요. 목록을 확인하고 다시 눌러 주세요.":m||"저장하지 못했어요. 다시 시도해 주세요.",true); }
+});
+window.SCHED_RENDER=()=>{ if(onSched()) renderSched(); };   // Firebase 쪽이 데이터가 바뀔 때 부른다
+$("me").addEventListener("change",()=>window.SCHED_RENDER());
+{ const P=new URLSearchParams(location.search).get("me"); if(P&&M.some(m=>m.n===P)){ $("me").value=P; pick(P); } }   // 선샤인에서 ?me=이름 으로 열면 이름이 선택돼 있다
+if(location.hash==="#sched") setTab("sched");
+</script>
+<script type="module">
+/* ===== 121 일정 저장소 (Firebase Firestore, 프로젝트 pioneer-121) =====
+   firebaseConfig는 공개돼도 되는 값이다. 데이터 보호는 Firestore 보안 규칙(firestore.rules)이 한다. */
+const CFG={apiKey:"AIzaSyARqRaoqkP-0ZTpppGehjnnbqqFpVzciCY",authDomain:"pioneer-121.firebaseapp.com",projectId:"pioneer-121",storageBucket:"pioneer-121.firebasestorage.app",messagingSenderId:"303869858071",appId:"1:303869858071:web:8f73600d9c66f330892752"};
+const SDK="https://www.gstatic.com/firebasejs/10.14.1/";
+const FB={state:"loading",error:"",slots:[]};
+window.FB=FB;
+const poke=()=>{ try{ window.SCHED_RENDER&&window.SCHED_RENDER(); }catch(e){} };
+(async()=>{
+  try{
+    const [A,F]=await Promise.all([import(SDK+"firebase-app.js"),import(SDK+"firebase-firestore.js")]);
+    const app=A.initializeApp(CFG);
+    const db=F.initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
+    const col=F.collection(db,"slots"), ref=id=>F.doc(db,"slots",id);
+    const d0=new Date(), today=d0.getFullYear()+"-"+String(d0.getMonth()+1).padStart(2,"0")+"-"+String(d0.getDate()).padStart(2,"0");
+    FB.open=(owner,date,times,mode,memo)=>Promise.all(times.map(t=>F.setDoc(ref(date+"_"+t+"_"+owner),{owner,date,time:t,mode,memo,status:"open",booker:null,createdAt:F.serverTimestamp()})));
+    FB.del=id=>F.deleteDoc(ref(id));
+    // 같은 칸을 두 사람이 동시에 눌러도 한 사람만 확정된다 (트랜잭션 + 보안 규칙 이중 방어)
+    FB.book=(id,who)=>F.runTransaction(db,async tx=>{ const s=await tx.get(ref(id)); if(!s.exists()) throw new Error("이 일정은 이미 사라졌어요."); const d=s.data();
+      if(d.status!=="open") throw new Error("방금 다른 분이 먼저 신청했어요. 다른 시간을 골라 주세요."); if(d.owner===who) throw new Error("내가 연 시간은 신청할 수 없어요.");
+      tx.update(ref(id),{status:"booked",booker:who}); });
+    FB.cancel=(id,who)=>F.runTransaction(db,async tx=>{ const s=await tx.get(ref(id)); if(!s.exists()) throw new Error("이 일정은 이미 사라졌어요."); const d=s.data();
+      if(d.status!=="booked"||(d.booker!==who&&d.owner!==who)) throw new Error("취소할 수 없는 일정이에요."); tx.update(ref(id),{status:"open",booker:null}); });
+    F.onSnapshot(F.query(col,F.where("date",">=",today)),snap=>{
+      FB.slots=snap.docs.map(d=>({id:d.id,...d.data()})); FB.state="ready"; FB.error=""; poke();
+    },err=>{ FB.state="error"; FB.error=(err&&err.code)||String(err); poke(); });
+  }catch(e){ FB.state="error"; FB.error=(e&&e.message)||String(e); poke(); }
+})();
 </script>
 </body>
 </html>
