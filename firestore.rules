@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 121 일정: 누구나 읽고, 정해진 모양으로만 만들고, 신청·취소만 바꿀 수 있다
+    match /slots/{id} {
+      allow read: if true;
+
+      allow create: if request.resource.data.keys().hasOnly(['owner','date','time','mode','memo','status','booker','createdAt'])
+        && request.resource.data.status == 'open'
+        && request.resource.data.booker == null
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.owner is string
+        && request.resource.data.owner.size() > 0 && request.resource.data.owner.size() <= 40
+        && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && request.resource.data.time.matches('^[0-2][0-9]:[0-5][0-9]$')
+        && request.resource.data.mode in ['대면', '온라인', '둘 다']
+        && request.resource.data.memo is string && request.resource.data.memo.size() <= 80
+        && id == request.resource.data.date + '_' + request.resource.data.time + '_' + request.resource.data.owner;
+
+      // 바꿀 수 있는 건 status·booker뿐. 열림→확정(신청자 이름 필수, 본인 시간은 신청 불가) / 확정→열림(취소)
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','booker'])
+        && (
+          (resource.data.status == 'open' && request.resource.data.status == 'booked'
+            && request.resource.data.booker is string
+            && request.resource.data.booker.size() > 0 && request.resource.data.booker.size() <= 40
+            && request.resource.data.booker != resource.data.owner)
+          ||
+          (resource.data.status == 'booked' && request.resource.data.status == 'open'
+            && request.resource.data.booker == null)
+        );
+
+      allow delete: if true;
+    }
+  }
+}
