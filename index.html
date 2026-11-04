@@ -81,11 +81,26 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .tc{padding:9px 12px;border:0;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;min-width:64px}
 .m-in{background:#f58220}.m-on{background:#0ea5e9}.m-bo{background:linear-gradient(135deg,#f58220 50%,#0ea5e9 50%)}
 input[type=search]{margin-top:0}
+.lmsg{font-size:14px;min-height:20px;margin:6px 0}.lmsg.err{color:var(--pr)}
+.lg{display:none;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin:14px 0}
+.w.nologin .lg{display:block}
+.w.nologin #tabs,.w.nologin .top,.w.nologin #body,.w.nologin #subCheck,.w.nologin #pane-sched,.w.nologin #ubar{display:none!important}
+#ubar{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;margin:8px 0}
+#me{display:none}
 </style>
 </head>
 <body>
-<div class="w">
+<div class="w nologin">
   <h1>121 체크</h1>
+  <div class="lg" id="login">
+    <b>로그인</b>
+    <p class="sub" style="margin:4px 0 8px">이름을 고르고 <b>전화번호 뒤 4자리</b>를 입력하세요. 내 체크와 내 일정은 로그인한 본인만 바꿀 수 있어요.</p>
+    <div class="fld"><label for="lgName">이름</label><select id="lgName"><option value="">이름을 선택하세요</option></select></div>
+    <div class="fld"><label for="lgPin">전화번호 뒤 4자리</label><input id="lgPin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••"></div>
+    <button class="act pr" id="lgBtn" style="width:100%;padding:13px;font-size:16px">로그인</button>
+    <div class="lmsg" id="lgMsg" role="status"></div>
+  </div>
+  <div id="ubar"><span><b id="ubName"></b>님으로 로그인됨</span><button class="act" id="lgOut">로그아웃</button></div>
   <div class="tabs" id="tabs"><button class="on" data-t="check">121 체크</button><button data-t="sched">121 일정</button></div>
   <p class="sub" id="subCheck">누구와 어느 단계까지 121을 했는지 스스로 체크해요. 저장하면 구글시트에 모입니다.</p>
   <div class="top">
@@ -102,7 +117,7 @@ input[type=search]{margin-top:0}
     <div class="save"><button id="sv">저장하기</button><div class="msg" id="msg"></div></div>
   </div>
   <div id="pane-sched">
-    <p class="sub">만날 수 있는 시간을 열어 두면 다른 멤버가 골라 신청해요. 신청되면 두 사람 일정에 "확정"으로 남고, 열린 목록에서는 사라져요. 위에서 내 이름을 먼저 골라 주세요.</p>
+    <p class="sub">만날 수 있는 시간을 열어 두면 다른 멤버가 골라 신청해요. 신청되면 두 사람 일정에 "확정"으로 남고, 열린 목록에서는 사라져요. 로그인한 이름으로 열고 신청해요.</p>
     <div id="schedBody"></div>
   </div>
 </div>
@@ -111,13 +126,12 @@ input[type=search]{margin-top:0}
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbyq1xJ27wttPpuxUJYK2EUIlpFlARy0_1w532YTCfd7fEMXMCIOcGB0SoqOKZ5mXa6n/exec";
 const LV = ["아직","패스포트","아는","신뢰","수익"];
 const MEMBERS = /*MEMBERS*/[{"n":"송승훈","co":"T.M LINK","f":"앱,웹개발(디지탈명함)"},{"n":"이상호","co":"㈜디자인시선","f":"인테리어(숙박,병원,상가)"},{"n":"조현우","co":"디에이치원","f":"고용지원금"},{"n":"김근우","co":"종합광고기획 창운","f":"인쇄,디자인"},{"n":"김경태","co":"늘곁애","f":"상조서비스"},{"n":"김지현","co":"감성온도","f":"숙박업(컨설팅)"},{"n":"심학봉","co":"㈜더베스트 금융서비스","f":"손해보험"},{"n":"이화춘","co":"이화춘뷰티랩","f":"반영구 뷰티"},{"n":"이소연","co":"해피드로잉","f":"미술교육"},{"n":"임춘식","co":"꽃가람","f":"꽃/화환 유통"},{"n":"정명수","co":"에어컨설팅","f":"에어컨 설치관리"},{"n":"홍정택","co":"스타인컴퍼니","f":"경호"},{"n":"박진성","co":"(주)진성부동산중개법인","f":"부동산중개 및 컨설팅"},{"n":"박미성","co":"울림 컴퍼니","f":"경영컨설팅"},{"n":"이채홍","co":"법무사사무소 검인","f":"법무사(형사사건전문)"},{"n":"조은영","co":"에어월드시스템BS","f":"냉동공조&실내공기정화솔루션"},{"n":"박선영","co":"㈜경동코퍼레이션","f":"안전용품(작업화/작업복/실리콘)"},{"n":"정상현","co":"아메리츠파이낸셜","f":"외국보험"},{"n":"이도현","co":"AIA프리미어 파트너","f":"생명보험"},{"n":"마루이","co":"벨라우모","f":"맞춤수제양복"},{"n":"문성우","co":"당고","f":"요식업(고기구이)"},{"n":"윤민수","co":"㈜이엘그룹","f":"태닝"},{"n":"이수민","co":"새벽 한방울(황지상회)","f":"기름,곡물 가공품"},{"n":"박지형","co":"세움세무","f":"세무"},{"n":"박병준","co":"드로아","f":"소파,가구 제작"},{"n":"조진성","co":"에이쁠","f":"청소"},{"n":"이해경","co":"데일카네기","f":"교육"},{"n":"이은성","co":"밝은소리라이프","f":"기업행사, MC"},{"n":"오예준","co":"청년커튼&블라인드 부산본점","f":"커튼,블라인드"},{"n":"이훈","co":"에이치컨설팅","f":"병원컨설팅"},{"n":"김여련","co":"법무법인 시우","f":"변호사"},{"n":"최소은","co":"","f":""},{"n":"이다경","co":"호림유통","f":"학교, 단체급식 납품"},{"n":"송이","co":"AIA프리미어 파트너스","f":"대물보험"}]/*END*/;
-let M = MEMBERS, me = "", ans = {};
+let M = MEMBERS, me = "", ans = {}, PIN = "";
 const $ = id => document.getElementById(id);
 const key = n => "121check:" + n;
 const ls = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
 
 $("me").innerHTML += M.map(m => `<option>${m.n}</option>`).join("");
-{ const last = ls.get("121check:me"); if (last && M.some(m => m.n === last)) { $("me").value = last; pick(last); } }
 $("me").onchange = e => pick(e.target.value);
 $("q").oninput = render;
 
@@ -129,7 +143,8 @@ async function pick(n) {
   try { ans = JSON.parse(ls.get(key(n)) || "{}"); } catch (e) {}
   if (SHEET_URL) {
     try {
-      const r = await fetch(SHEET_URL + "?me=" + encodeURIComponent(n)).then(r => r.json());
+      const r = await fetch(SHEET_URL + "?me=" + encodeURIComponent(n) + "&pin=" + encodeURIComponent(PIN)).then(r => r.json());
+      if (r.error) { say("로그인 정보가 맞지 않아요. 로그아웃 후 다시 로그인해 주세요."); render(); return; }
       if (r.st && Object.keys(r.st).length) { ans = {}; for (const p in r.st) { const i = LV.indexOf(r.st[p]); if (i > 0) ans[p] = i; } } // 시트의 단계명이 기준
     } catch (e) { say("시트 불러오기 실패. 이 기기 저장분을 보여줘요."); }
   }
@@ -166,7 +181,7 @@ $("sv").onclick = async () => {
   $("sv").disabled = true; say("저장 중…");
   const rows = M.filter(m => m.n !== me).map(m => ({ p: m.n, lv: ans[m.n] || 0, st: LV[ans[m.n] || 0] }));
   try {
-    await fetch(SHEET_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ me, rows }) });
+    await fetch(SHEET_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify({ me, pin: PIN, rows }) });
     say("저장했어요 ✓ " + new Date().toLocaleTimeString("ko-KR"));
   } catch (e) { say("저장 실패. 잠시 후 다시 눌러 주세요."); }
   $("sv").disabled = false;
@@ -237,7 +252,7 @@ function renderSched(){
   const body=$("schedBody"), FB=window.FB, t0=ymd(new Date());
   if(!FB||FB.state==="loading"){ body.innerHTML='<div class="emp">일정 저장소에 연결하는 중이에요…</div>'; return; }
   if(FB.state==="error"){ body.innerHTML=`<div class="emp">일정 저장소에 연결하지 못했어요. ${esc(FB.error||"")}<br>잠시 뒤 새로고침해 보세요. 계속되면 운영진에게 알려 주세요.</div>`; return; }
-  if(!me){ body.innerHTML='<div class="emp">위에서 <b>내 이름</b>을 먼저 골라 주세요.</div>'; return; }
+  if(!me){ body.innerHTML='<div class="emp">먼저 로그인해 주세요.</div>'; return; }
   const all=FB.slots.filter(x=>x.date>=t0);
   MINE={}; all.forEach(x=>{ if(x.owner===me) MINE[x.date+"|"+x.time]=x; });
   const booked=all.filter(x=>x.status==="booked"&&(x.owner===me||x.booker===me)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
@@ -300,8 +315,8 @@ sp.addEventListener("click",async e=>{
   if(act==="hm"){ const dow=+b.dataset.dow, bi=+b.dataset.bi; SC.fCell=SC.fCell&&SC.fCell.dow===dow&&SC.fCell.bi===bi?null:{dow,bi}; renderSched(); return; }
   if(act==="hmclear"){ SC.fCell=null; renderSched(); return; }
   if(!FB||FB.state!=="ready") return sayS("저장소에 연결된 뒤에 다시 눌러 주세요.",true);
-  if(!me) return sayS("위에서 내 이름을 먼저 골라 주세요.",true);
-  b.disabled=true; SC.msg=""; { const sm=document.querySelector(".smsg"); if(sm){ sm.classList.remove("err"); sm.textContent="처리 중…"; } }   // 저장에 몇 초 걸려서 진행 표시를 먼저 보여준다
+  if(!me) return sayS("먼저 로그인해 주세요.",true);
+  b.disabled=true; SC.msg=""; { const sm=document.querySelector("#schedBody .smsg"); if(sm){ sm.classList.remove("err"); sm.textContent="처리 중…"; } }   // 저장에 몇 초 걸려서 진행 표시를 먼저 보여준다
   try{
     if(act==="save"){
       const adds=[], rem=[];
@@ -323,8 +338,32 @@ sp.addEventListener("click",async e=>{
   }catch(err){ const m=err&&err.message||""; b.disabled=false; sayS(/permission|insufficient/i.test(m)?"저장이 거절됐어요. 그 사이에 일정이 바뀌었을 수 있어요. 목록을 확인하고 다시 눌러 주세요.":m||"저장하지 못했어요. 다시 시도해 주세요.",true); }
 });
 window.SCHED_RENDER=()=>{ if(onSched()) renderSched(); };   // Firebase 쪽이 데이터가 바뀔 때 부른다
-$("me").addEventListener("change",()=>{ SC.draft=new Map(); SC.msg=""; window.SCHED_RENDER(); });
-{ const P=new URLSearchParams(location.search).get("me"); if(P&&M.some(m=>m.n===P)){ $("me").value=P; pick(P); } }   // 선샤인에서 ?me=이름 으로 열면 이름이 선택돼 있다
+/* ===== 로그인: 이름 + 전화번호 뒤 4자리 (Firebase 로그인 기록 + 구글시트 확인) ===== */
+$("lgName").innerHTML += M.map(m => `<option>${esc(m.n)}</option>`).join("");
+{ const P = new URLSearchParams(location.search).get("me") || ls.get("121check:me"); if (P && M.some(m => m.n === P)) $("lgName").value = P; }   // 선샤인에서 ?me=이름 으로 열면 이름이 미리 골라져 있다
+const lgSay = (m, err) => { const e = $("lgMsg"); e.textContent = m; e.classList.toggle("err", !!err); };
+function enter(name, pin) {   // 로그인 성공: 화면을 열고 내 데이터를 불러온다
+  PIN = pin; $("me").value = name; wrap.classList.remove("nologin"); $("ubName").textContent = name; lgSay(""); $("lgPin").value = "";
+  ls.set("121check:me", name); ls.set("121check:pin", pin); pick(name); window.SCHED_RENDER();
+}
+function leave(msg) {   // 로그아웃 상태로 돌아간다
+  PIN = ""; me = ""; ls.set("121check:pin", ""); $("me").value = ""; pick(""); wrap.classList.add("nologin"); SC.draft = new Map(); SC.msg = ""; if (msg) lgSay(msg, false);
+}
+$("lgBtn").onclick = async () => {
+  const name = $("lgName").value, pin = $("lgPin").value.trim(), FB = window.FB;
+  if (!name) return lgSay("이름을 먼저 골라 주세요.", true);
+  if (!/^[0-9]{4}$/.test(pin)) return lgSay("전화번호 뒤 4자리(숫자)를 입력해 주세요.", true);
+  if (!FB || !FB.login) return lgSay("서버에 연결하는 중이에요. 잠시 뒤 다시 눌러 주세요.", true);
+  if (FB.state === "error") return lgSay("서버에 연결하지 못했어요. 새로고침 후 다시 시도해 주세요.", true);
+  $("lgBtn").disabled = true; lgSay("확인 중…");
+  try { await FB.login(name, pin); enter(name, pin); }
+  catch (e) { const c = (e && e.code) || ""; lgSay(/permission|denied/i.test(c + (e.message || "")) ? "이름과 번호가 맞지 않아요. 다시 확인해 주세요." : /operation-not-allowed|admin-restricted/i.test(c) ? "로그인 기능이 아직 켜져 있지 않아요. 운영진에게 알려 주세요." : "로그인하지 못했어요. 잠시 뒤 다시 시도해 주세요.", true); }
+  $("lgBtn").disabled = false;
+};
+$("lgPin").addEventListener("keydown", e => { if (e.key === "Enter") $("lgBtn").click(); });
+$("lgOut").onclick = async () => { try { if (window.FB && FB.logout) await FB.logout(); } catch (e) {} leave("로그아웃했어요."); };
+// 이전에 로그인한 기기라면 번호 없이 자동으로 들어온다 (서버의 로그인 기록 + 이 기기에 저장된 번호가 모두 있을 때만)
+window.ON_AUTH = name => { if (name && !me && ls.get("121check:pin")) enter(name, ls.get("121check:pin")); else if (name) $("lgName").value = name; };
 if(location.hash==="#sched") setTab("sched");
 </script>
 <script type="module">
@@ -337,10 +376,14 @@ window.FB=FB;
 const poke=()=>{ try{ window.SCHED_RENDER&&window.SCHED_RENDER(); }catch(e){} };
 (async()=>{
   try{
-    const [A,F]=await Promise.all([import(SDK+"firebase-app.js"),import(SDK+"firebase-firestore.js")]);
+    const [A,F,U]=await Promise.all([import(SDK+"firebase-app.js"),import(SDK+"firebase-firestore.js"),import(SDK+"firebase-auth.js")]);
     const app=A.initializeApp(CFG);
     const db=F.initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
-    const col=F.collection(db,"slots"), ref=id=>F.doc(db,"slots",id);
+    const auth=U.getAuth(app), col=F.collection(db,"slots"), ref=id=>F.doc(db,"slots",id), sref=uid=>F.doc(db,"sessions",uid);
+    // 로그인: 이 기기에 익명 계정을 만들고, 이름과 번호를 서버에 적는다. 번호가 맞아야 보안 규칙이 받아 준다.
+    FB.login=async(name,pin)=>{ let u=auth.currentUser; if(!u) u=(await U.signInAnonymously(auth)).user; await F.setDoc(sref(u.uid),{name,pin}); FB.user=name; };
+    FB.logout=async()=>{ const u=auth.currentUser; FB.user=null; if(u){ try{ await F.deleteDoc(sref(u.uid)); }catch(e){} await U.signOut(auth); } };
+    U.onAuthStateChanged(auth,async u=>{ let name=null; if(u){ try{ const d=await F.getDoc(sref(u.uid)); name=d.exists()?d.data().name:null; }catch(e){} } FB.user=name; try{ window.ON_AUTH&&window.ON_AUTH(name); }catch(e){} });
     const d0=new Date(), today=d0.getFullYear()+"-"+String(d0.getMonth()+1).padStart(2,"0")+"-"+String(d0.getDate()).padStart(2,"0");
     FB.openMany=(owner,items,memo)=>Promise.all(items.map(x=>F.setDoc(ref(x.date+"_"+x.time+"_"+owner),{owner,date:x.date,time:x.time,mode:x.mode,memo,status:"open",booker:null,createdAt:F.serverTimestamp()})));
     // 열린 칸만 지운다: 그 사이에 신청돼 확정된 칸은 거절하고 그대로 둔다
