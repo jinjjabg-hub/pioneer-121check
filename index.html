@@ -52,6 +52,35 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .smsg{font-size:14px;min-height:20px;margin:6px 0}
 .smsg.err{color:var(--pr)}
 .emp{font-size:14px;color:var(--mu);border:1px dashed var(--bd);border-radius:10px;padding:12px}
+.gx{font-size:13px;color:var(--mu);margin-bottom:8px}.gx2{opacity:.8}
+.brush{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0}
+.brush button{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 4px;border:1px solid var(--bd);background:transparent;color:var(--tx);border-radius:12px;font-size:14px;font-weight:600;cursor:pointer}
+.brush button.on{background:var(--tx);border-color:var(--tx);color:var(--bg)}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;border:1px solid var(--bd)}
+.c-in{background:#f58220!important}.c-on{background:#0ea5e9!important}.c-bo{background:linear-gradient(135deg,#f58220 50%,#0ea5e9 50%)!important}
+.c-bk{background:var(--tx)!important;color:var(--bg);font-size:12px}
+.sw.dirty{outline:2px solid var(--pr);outline-offset:-2px;background:transparent}
+.wk{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+.gw{display:grid;grid-template-columns:44px repeat(7,1fr);gap:3px;user-select:none;-webkit-user-select:none}
+.gh{font-size:11px;color:var(--mu);text-align:center;background:transparent;border:0;padding:0;font-family:inherit}
+.gd{font-size:13px;font-weight:700;color:var(--tx);cursor:pointer;line-height:1.2;padding:4px 0}.gd small{display:block;font-weight:400;font-size:10px;color:var(--mu)}
+.gt{cursor:pointer;text-align:right;padding-right:4px;line-height:30px}
+.gc{height:30px;border:1px solid var(--bd);background:transparent;border-radius:6px;padding:0;cursor:pointer;touch-action:manipulation}
+.gc.dirty{outline:2px solid var(--pr);outline-offset:-2px}
+.gc.past{opacity:.3;cursor:default}
+.gleg{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--mu);margin:8px 0}.gleg span{display:flex;align-items:center;gap:4px}
+.fm{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:8px}
+.fm button{padding:8px 12px;border:1px solid var(--bd);background:transparent;color:var(--tx);border-radius:999px;font-size:13px;cursor:pointer}
+.fm button.on{background:#f58220;border-color:#f58220;color:#fff;font-weight:700}
+.hm{display:grid;grid-template-columns:52px repeat(7,1fr);gap:4px}
+.hh{font-size:12px;color:var(--mu);text-align:center}
+.hl{font-size:12px;font-weight:700;line-height:1.2;align-self:center}.hl small{display:block;font-weight:400;color:var(--mu);font-size:10px}
+.hc{height:38px;border:1px solid var(--bd);border-radius:8px;background:color-mix(in srgb,#f58220 var(--a),var(--card));color:var(--tx);font-weight:700;font-size:14px;cursor:pointer;padding:0}
+.hc:disabled{background:transparent;cursor:default}.hc.sel{outline:2px solid var(--tx)}
+.tcs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.tc{padding:9px 12px;border:0;border-radius:8px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;min-width:64px}
+.m-in{background:#f58220}.m-on{background:#0ea5e9}.m-bo{background:linear-gradient(135deg,#f58220 50%,#0ea5e9 50%)}
+input[type=search]{margin-top:0}
 </style>
 </head>
 <body>
@@ -142,78 +171,159 @@ $("sv").onclick = async () => {
   } catch (e) { say("저장 실패. 잠시 후 다시 눌러 주세요."); }
   $("sv").disabled = false;
 };
-/* ===== 121 일정 (Firebase Firestore): 시간을 열고, 신청하면 확정 ===== */
+/* ===== 121 일정 (Firebase Firestore): 칸을 눌러 시간을 열고, 열린 시간을 눌러 신청하면 확정 ===== */
 const wrap=document.querySelector(".w"), byN=Object.fromEntries(M.map(m=>[m.n,m]));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const SC={date:"",times:new Set(),mode:"둘 다",memo:"",msg:"",err:false};
+const SC={week:0,brush:"둘 다",draft:new Map(),memo:"",msg:"",err:false,fMode:"전체",fCell:null,q:"",drag:null,skipClick:false};
 const SC_TIMES=[]; for(let m=9*60;m<=18*60;m+=30) SC_TIMES.push(String(m/60|0).padStart(2,"0")+":"+(m%60?"30":"00"));   // 09:00~18:00, 30분 단위
-const DOWK=["일","월","화","수","목","금","토"];
+const DOWK=["일","월","화","수","목","금","토"], DOW_ORDER=[1,2,3,4,5,6,0];
+const MCLS={"대면":"m-in","온라인":"m-on","둘 다":"m-bo"}, CCLS={"대면":"c-in","온라인":"c-on","둘 다":"c-bo"};
+const BANDS=[["오전","09–12시",t=>t<"12:00"],["점심","12–14시",t=>t>="12:00"&&t<"14:00"],["오후","14–18시",t=>t>="14:00"&&t<"18:00"],["저녁","18시 이후",t=>t>="18:00"]];
 const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-const fmtD=t=>{ const [y,m,d]=t.split("-").map(Number); return `${m}/${d} (${DOWK[new Date(y,m-1,d).getDay()]})`; };
+const pdate=t=>{ const [y,m,d]=t.split("-").map(Number); return new Date(y,m-1,d); };
+const fmtD=t=>{ const d=pdate(t); return `${d.getMonth()+1}/${d.getDate()} (${DOWK[d.getDay()]})`; };
+const nowHM=()=>{ const n=new Date(); return String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0"); };
+const isPast=(d,t)=>{ const today=ymd(new Date()); return d<today||(d===today&&t<=nowHM()); };
 const onSched=()=>wrap.classList.contains("sched");
+let MINE={};   // 내가 연 일정 ("날짜|시간" → 일정)
 function setTab(t){ wrap.classList.toggle("sched",t==="sched"); document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
   try{ history.replaceState(null,"",t==="sched"?"#sched":location.pathname+location.search); }catch(e){} if(t==="sched") renderSched(); }
 $("tabs").onclick=e=>{ const b=e.target.closest("button[data-t]"); if(b) setTab(b.dataset.t); };
+
+function weekDates(){ const t=new Date(); t.setHours(0,0,0,0); const mon=new Date(t); mon.setDate(t.getDate()-((t.getDay()+6)%7)+7*SC.week);
+  return [...Array(7)].map((_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return ymd(d); }); }
+function eff(d,t){ const key=d+"|"+t;
+  if(SC.draft.has(key)) return {mode:SC.draft.get(key),dirty:true};
+  const b=MINE[key]; if(!b) return {mode:null};
+  return b.status==="booked"?{mode:null,booked:true}:{mode:b.mode}; }
+function setCell(d,t,mode){ const key=d+"|"+t, b=MINE[key]; if(b&&b.status==="booked") return;
+  if(mode===(b?b.mode:null)) SC.draft.delete(key); else SC.draft.set(key,mode); }
+const cellCls=(d,t)=>{ const e=eff(d,t); return "gc"+(e.booked?" c-bk":e.mode?" "+CCLS[e.mode]:"")+(e.dirty?" dirty":"")+(isPast(d,t)?" past":""); };
+function refreshGrid(){
+  document.querySelectorAll("#schedBody .gc").forEach(c=>{ const d=c.dataset.d, t=c.dataset.t; c.className=cellCls(d,t); c.textContent=eff(d,t).booked?"✓":""; });
+  const n=SC.draft.size, sb=$("gsave"), ub=$("gundo");
+  if(sb){ sb.disabled=!n; sb.textContent=n?`변경 ${n}칸 저장`:"저장할 변경이 없어요"; } if(ub) ub.disabled=!n;
+}
+function bulk(list,d_t){   // 줄 전체 칠하기: 이미 모두 이 방식이면 지우고, 아니면 모두 이 방식으로
+  const cells=list.filter(([d,t])=>!isPast(d,t)&&!eff(d,t).booked), all=cells.length&&cells.every(([d,t])=>eff(d,t).mode===SC.brush);
+  cells.forEach(([d,t])=>setCell(d,t,all?null:SC.brush)); refreshGrid(); }
+
+function gridHTML(){
+  const ds=weekDates();
+  return `<div class="gw" id="gridw"><div class="gh"></div>${ds.map(d=>{ const p=pdate(d); return `<button class="gh gd" data-sact="hday" data-d="${d}">${DOWK[p.getDay()]}<small>${p.getMonth()+1}/${p.getDate()}</small></button>`; }).join("")}
+    ${SC_TIMES.map(t=>`<button class="gh gt" data-sact="hrow" data-t="${t}">${t}</button>${ds.map(d=>`<button class="${cellCls(d,t)}" data-d="${d}" data-t="${t}" aria-label="${fmtD(d)} ${t}"${isPast(d,t)?" disabled":""}>${eff(d,t).booked?"✓":""}</button>`).join("")}`).join("")}</div>`; }
+
+function heatHTML(others){
+  const cnt={}; let mx=1;
+  others.forEach(x=>{ const dow=pdate(x.date).getDay(), bi=BANDS.findIndex(b=>b[2](x.time)); if(bi<0) return; ((cnt[dow+"|"+bi]=cnt[dow+"|"+bi]||new Set())).add(x.owner); });
+  Object.values(cnt).forEach(s=>{ if(s.size>mx) mx=s.size; });
+  const sel=SC.fCell;
+  return `<div class="hm"><div class="hh"></div>${DOW_ORDER.map(w=>`<div class="hh">${DOWK[w]}</div>`).join("")}
+    ${BANDS.map((b,bi)=>`<div class="hl">${b[0]}<small>${b[1]}</small></div>${DOW_ORDER.map(w=>{ const n=(cnt[w+"|"+bi]||{size:0}).size;
+      return `<button class="hc${sel&&sel.dow===w&&sel.bi===bi?" sel":""}" style="--a:${n?Math.round(18+n/mx*60):0}%" data-sact="hm" data-dow="${w}" data-bi="${bi}"${n?"":" disabled"}>${n||""}</button>`; }).join("")}`).join("")}</div>`; }
+
+function openListHTML(others){
+  const q=SC.q.trim();
+  const vis=others.filter(x=>(SC.fMode==="전체"||x.mode===SC.fMode||x.mode==="둘 다")
+    &&(!SC.fCell||(pdate(x.date).getDay()===SC.fCell.dow&&BANDS[SC.fCell.bi][2](x.time)))
+    &&(!q||(x.owner+(byN[x.owner]?byN[x.owner].co+byN[x.owner].f:"")).includes(q)));
+  if(!vis.length) return '<div class="emp">조건에 맞는 열린 시간이 없어요.</div>';
+  const byDate={}; vis.forEach(x=>{ ((byDate[x.date]=byDate[x.date]||{})[x.owner]=byDate[x.date][x.owner]||[]).push(x); });
+  return Object.keys(byDate).sort().map(d=>`<div class="day">${fmtD(d)}</div>${Object.keys(byDate[d]).map(o=>{ const L=byDate[d][o].sort((a,b)=>a.time.localeCompare(b.time)), m=byN[o];
+    return `<div class="row"><span class="nm">${esc(o)}</span> <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span><div class="tcs">${L.map(x=>`<button class="tc ${MCLS[x.mode]}" data-sact="book" data-id="${esc(x.id)}">${x.time}</button>`).join("")}</div></div>`; }).join("")}`).join("");
+}
+
 function renderSched(){
   const body=$("schedBody"), FB=window.FB, t0=ymd(new Date());
   if(!FB||FB.state==="loading"){ body.innerHTML='<div class="emp">일정 저장소에 연결하는 중이에요…</div>'; return; }
   if(FB.state==="error"){ body.innerHTML=`<div class="emp">일정 저장소에 연결하지 못했어요. ${esc(FB.error||"")}<br>잠시 뒤 새로고침해 보세요. 계속되면 운영진에게 알려 주세요.</div>`; return; }
   if(!me){ body.innerHTML='<div class="emp">위에서 <b>내 이름</b>을 먼저 골라 주세요.</div>'; return; }
-  const all=FB.slots.filter(x=>x.date>=t0).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-  const mine=all.filter(x=>x.owner===me||x.booker===me);
-  const mineBooked=mine.filter(x=>x.status==="booked"), mineOpen=mine.filter(x=>x.status==="open"&&x.owner===me);
-  const others=all.filter(x=>x.status==="open"&&x.owner!==me);
-  const info=n=>{ const o=byN[n]; return o?`${esc(o.co||"")}${o.f?" · "+esc(o.f):""}`:""; };
-  const myRow=x=>{ if(x.status==="booked"){ const other=x.owner===me?x.booker:x.owner;
-      return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg ok">확정</span> <span class="tg">${esc(x.mode)}</span><div class="co">${esc(other)} · ${info(other)}${x.memo?" · "+esc(x.memo):""}</div></div><div class="ac"><button class="act" data-sact="cancel" data-id="${esc(x.id)}">${x.owner===me?"신청 취소하고 다시 열기":"신청 취소"}</button>${x.owner===me?`<button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button>`:""}</div></div>`; }
-    return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg">열림</span> <span class="tg">${esc(x.mode)}</span>${x.memo?`<div class="co">${esc(x.memo)}</div>`:""}</div><button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button></div>`; };
-  const myList=[...mineBooked,...mineOpen].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
-  const byDate={}; others.forEach(x=>(byDate[x.date]=byDate[x.date]||[]).push(x));
-  const openCard=x=>`<div class="row sl"><div><b>${esc(x.time)}</b> · <span class="nm">${esc(x.owner)}</span> <span class="tg">${esc(x.mode)}</span><div class="co">${info(x.owner)}${x.memo?" · "+esc(x.memo):""}</div></div><button class="act pr" data-sact="book" data-id="${esc(x.id)}">이 시간 신청</button></div>`;
+  const all=FB.slots.filter(x=>x.date>=t0);
+  MINE={}; all.forEach(x=>{ if(x.owner===me) MINE[x.date+"|"+x.time]=x; });
+  const booked=all.filter(x=>x.status==="booked"&&(x.owner===me||x.booker===me)).sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time));
+  const myOpen=all.filter(x=>x.status==="open"&&x.owner===me).length;
+  const others=all.filter(x=>x.status==="open"&&x.owner!==me&&!isPast(x.date,x.time)).filter(x=>SC.fMode==="전체"||x.mode===SC.fMode||x.mode==="둘 다");
+  const ds=weekDates(), rng=`${fmtD(ds[0])} ~ ${fmtD(ds[6])}`;
+  const bk=x=>{ const other=x.owner===me?x.booker:x.owner, o=byN[other];
+    return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg ok">확정</span> <span class="tg">${esc(x.mode)}</span><div class="co">${esc(other)}${o?" · "+esc(o.co||"")+(o.f?" · "+esc(o.f):""):""}${x.memo?" · "+esc(x.memo):""}</div></div><div class="ac"><button class="act" data-sact="cancel" data-id="${esc(x.id)}">${x.owner===me?"신청 취소하고 다시 열기":"신청 취소"}</button>${x.owner===me?`<button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button>`:""}</div></div>`; };
   body.innerHTML=`
     <div class="sec">내가 만날 수 있는 시간 열기 <small>(${esc(me)} 이름으로 저장돼요)</small></div>
     <div class="row">
-      <div class="fld"><label for="scDate">날짜</label><input type="date" id="scDate" min="${t0}" value="${esc(SC.date)}"></div>
-      <div class="fld"><label>시작 시간 · 30분 단위 (여러 개 고를 수 있어요)</label><div class="chips">${SC_TIMES.map(t=>`<button class="${SC.times.has(t)?"on":""}" data-sact="time" data-v="${t}">${t}</button>`).join("")}</div></div>
-      <div class="fld"><label for="scMode">방식</label><select id="scMode">${["둘 다","대면","온라인"].map(m=>`<option${SC.mode===m?" selected":""}>${m}</option>`).join("")}</select></div>
-      <div class="fld"><label for="scMemo">장소·메모 (선택)</label><input type="text" id="scMemo" maxlength="80" placeholder="예: 서면 사무실, 점심 같이 가능" value="${esc(SC.memo)}"></div>
-      <button class="act pr" style="width:100%;padding:13px;font-size:16px" data-sact="open">이 시간들 열기</button>
+      <div class="gx">방식을 고른 뒤 칸을 누르면 칠해지고, 같은 방식으로 다시 누르면 지워져요. 날짜·시간 이름을 누르면 한 줄이 한 번에 칠해져요. <span class="gx2">(컴퓨터는 끌어서 여러 칸 칠하기도 돼요)</span></div>
+      <div class="brush" id="brush">${["대면","온라인","둘 다"].map(m=>`<button class="${SC.brush===m?"on":""}" data-sact="brush" data-m="${m}"><i class="sw ${CCLS[m]}"></i>${m==="대면"?"대면 미팅":m==="온라인"?"온라인 줌":"둘 다 가능"}</button>`).join("")}</div>
+      <div class="wk"><button class="act" data-sact="wk" data-v="-1"${SC.week<=0?" disabled":""}>◀</button><b>${rng}</b><button class="act" data-sact="wk" data-v="1"${SC.week>=3?" disabled":""}>▶</button></div>
+      ${gridHTML()}
+      <div class="gleg"><span><i class="sw c-in"></i>대면</span><span><i class="sw c-on"></i>온라인</span><span><i class="sw c-bo"></i>둘 다</span><span><i class="sw c-bk"></i>확정됨</span><span><i class="sw dirty"></i>저장 전 변경</span></div>
+      <div class="fld"><label for="scMemo">장소·메모 (선택 · 새로 여는 칸에 같이 저장돼요)</label><input type="text" id="scMemo" maxlength="80" placeholder="예: 서면 사무실, 점심 같이 가능" value="${esc(SC.memo)}"></div>
+      <div style="display:flex;gap:8px"><button class="act pr" id="gsave" data-sact="save" style="flex:1;padding:13px;font-size:16px" disabled>저장할 변경이 없어요</button><button class="act" id="gundo" data-sact="undo" disabled>되돌리기</button></div>
       <div class="smsg${SC.err?" err":""}" role="status">${esc(SC.msg)}</div>
+      <div class="co">내가 열어 둔 시간 ${myOpen}개 · 확정 ${booked.length}건</div>
     </div>
-    <div class="sec">내 일정 <small>${mineBooked.length}건 확정 · ${mineOpen.length}건 열림</small></div>
-    ${myList.length?myList.map(myRow).join(""):'<div class="emp">아직 일정이 없어요. 위에서 시간을 열거나, 아래에서 다른 멤버의 시간을 신청해 보세요.</div>'}
-    <div class="sec">다른 멤버가 열어 둔 시간 <small>${others.length}개</small></div>
-    ${Object.keys(byDate).sort().map(d=>`<div class="day">${fmtD(d)}</div>${byDate[d].map(openCard).join("")}`).join("")||'<div class="emp">지금 열려 있는 시간이 없어요. 먼저 내 시간을 열어 보세요.</div>'}`;
+    <div class="sec">내 확정 일정 <small>${booked.length}건</small></div>
+    ${booked.length?booked.map(bk).join(""):'<div class="emp">아직 확정된 일정이 없어요. 아래에서 다른 멤버의 시간을 눌러 신청해 보세요.</div>'}
+    <div class="sec">한눈에 보기 <small>숫자 = 시간을 열어 둔 멤버 수 · 칸을 누르면 그 시간대만 봐요</small></div>
+    <div class="row">
+      <div class="fm" id="fm">${["전체","대면","온라인"].map(m=>`<button class="${SC.fMode===m?"on":""}" data-sact="fmode" data-m="${m}">${m==="전체"?"전체":m+" 가능"}</button>`).join("")}<span class="co">'둘 다 가능' 포함</span></div>
+      ${heatHTML(others)}
+      ${SC.fCell?`<button class="act" data-sact="hmclear" style="margin-top:8px">${DOWK[SC.fCell.dow]}요일 ${BANDS[SC.fCell.bi][0]} 보는 중 ✕</button>`:""}
+    </div>
+    <div class="sec">다른 멤버가 열어 둔 시간 <small>시간을 누르면 신청해요</small></div>
+    <div class="fld"><input type="search" id="scQ" placeholder="이름·회사·업종 검색" value="${esc(SC.q)}"></div>
+    <div id="openList">${openListHTML(others)}</div>`;
+  refreshGrid();
 }
-$("pane-sched").addEventListener("input",e=>{ if(e.target.id==="scDate") SC.date=e.target.value; else if(e.target.id==="scMode") SC.mode=e.target.value; else if(e.target.id==="scMemo") SC.memo=e.target.value; });
-$("pane-sched").addEventListener("click",async e=>{
-  const b=e.target.closest("button[data-sact]"); if(!b) return;
+
+/* 입력·클릭 처리 */
+const sp=$("pane-sched");
+sp.addEventListener("input",e=>{
+  if(e.target.id==="scMemo") SC.memo=e.target.value;
+  else if(e.target.id==="scQ"){ SC.q=e.target.value; const FB=window.FB; if(FB&&FB.state==="ready"){ const t0=ymd(new Date());
+    $("openList").innerHTML=openListHTML(FB.slots.filter(x=>x.date>=t0&&x.status==="open"&&x.owner!==me&&!isPast(x.date,x.time))); } }
+});
+// 컴퓨터: 눌러서 끌면 여러 칸 칠하기 (휴대폰은 칸을 한 번씩 누르거나 날짜·시간 이름으로 한 줄 칠하기)
+document.addEventListener("pointerdown",e=>{ const c=e.target.closest&&e.target.closest("#schedBody .gc"); if(!c||e.pointerType!=="mouse"||e.button!==0||c.disabled) return;
+  e.preventDefault(); SC.skipClick=true; SC.drag={mode:eff(c.dataset.d,c.dataset.t).mode===SC.brush?null:SC.brush}; setCell(c.dataset.d,c.dataset.t,SC.drag.mode); refreshGrid(); });
+document.addEventListener("pointerover",e=>{ if(!SC.drag) return; const c=e.target.closest&&e.target.closest("#schedBody .gc"); if(c&&!c.disabled){ setCell(c.dataset.d,c.dataset.t,SC.drag.mode); refreshGrid(); } });
+window.addEventListener("pointerup",()=>{ if(SC.drag){ SC.drag=null; setTimeout(()=>{ SC.skipClick=false; },0); } });
+sp.addEventListener("click",async e=>{
+  const c=e.target.closest(".gc");
+  if(c){ if(SC.skipClick){ SC.skipClick=false; return; } if(c.disabled) return;
+    setCell(c.dataset.d,c.dataset.t,eff(c.dataset.d,c.dataset.t).mode===SC.brush?null:SC.brush); refreshGrid(); return; }
+  const b=e.target.closest("[data-sact]"); if(!b) return;
   const FB=window.FB, act=b.dataset.sact, sayS=(m,err)=>{ SC.msg=m; SC.err=!!err; renderSched(); };
-  if(act==="time"){ const v=b.dataset.v; SC.times.has(v)?SC.times.delete(v):SC.times.add(v); renderSched(); return; }
+  if(act==="brush"){ SC.brush=b.dataset.m; renderSched(); return; }
+  if(act==="wk"){ SC.week=Math.max(0,Math.min(3,SC.week+ +b.dataset.v)); renderSched(); return; }
+  if(act==="hday"){ bulk(SC_TIMES.map(t=>[b.dataset.d,t])); return; }
+  if(act==="hrow"){ bulk(weekDates().map(d=>[d,b.dataset.t])); return; }
+  if(act==="undo"){ SC.draft=new Map(); SC.msg=""; renderSched(); return; }
+  if(act==="fmode"){ SC.fMode=b.dataset.m; renderSched(); return; }
+  if(act==="hm"){ const dow=+b.dataset.dow, bi=+b.dataset.bi; SC.fCell=SC.fCell&&SC.fCell.dow===dow&&SC.fCell.bi===bi?null:{dow,bi}; renderSched(); return; }
+  if(act==="hmclear"){ SC.fCell=null; renderSched(); return; }
   if(!FB||FB.state!=="ready") return sayS("저장소에 연결된 뒤에 다시 눌러 주세요.",true);
   if(!me) return sayS("위에서 내 이름을 먼저 골라 주세요.",true);
-  b.disabled=true;
+  b.disabled=true; SC.msg=""; { const sm=document.querySelector(".smsg"); if(sm){ sm.classList.remove("err"); sm.textContent="처리 중…"; } }   // 저장에 몇 초 걸려서 진행 표시를 먼저 보여준다
   try{
-    if(act==="open"){
-      if(!SC.date) throw new Error("날짜를 먼저 골라 주세요.");
-      if(SC.date<ymd(new Date())) throw new Error("지난 날짜는 열 수 없어요.");
-      if(!SC.times.size) throw new Error("시작 시간을 하나 이상 골라 주세요.");
-      const times=[...SC.times].sort(), have=new Set(FB.slots.filter(x=>x.owner===me&&x.date===SC.date).map(x=>x.time));
-      const busy=new Set(FB.slots.filter(x=>x.status==="booked"&&x.date===SC.date&&(x.owner===me||x.booker===me)).map(x=>x.time));
-      const add=times.filter(t=>!have.has(t)&&!busy.has(t));
-      if(!add.length) throw new Error("고른 시간은 이미 열려 있거나 확정된 시간이에요.");
-      await FB.open(me,SC.date,add,SC.mode,SC.memo.trim());
-      SC.times=new Set(); sayS(`${fmtD(SC.date)} ${add.join(", ")} 시간을 열었어요.${add.length<times.length?` (이미 있는 ${times.length-add.length}개는 건너뜀)`:""}`);
+    if(act==="save"){
+      const adds=[], rem=[];
+      for(const [key,v] of SC.draft){ const [d,t]=key.split("|"), base=MINE[key];
+        if(base&&base.status==="booked") continue;
+        if(base) rem.push(base.id);   // 방식을 바꾸는 칸은 지우고 다시 연다
+        if(v) adds.push({date:d,time:t,mode:v}); }
+      const res=rem.length?await FB.removeOpen(rem):[], failed=res.filter(r=>r.status==="rejected").length;
+      if(adds.length) await FB.openMany(me,adds,SC.memo.trim());
+      SC.draft=new Map();
+      sayS(failed?`저장했지만 ${failed}칸은 그 사이에 신청돼서 그대로 남아 있어요. 아래 확정 일정을 확인해 주세요.`:`저장했어요. 열기 ${adds.length}칸${rem.length?` · 지우기/변경 ${rem.length}칸`:""}`);
     }else if(act==="book"){
       const x=FB.slots.find(z=>z.id===b.dataset.id); if(!x) throw new Error("이 일정은 이미 사라졌어요.");
       if(FB.slots.some(z=>z.status==="booked"&&z.date===x.date&&z.time===x.time&&(z.owner===me||z.booker===me))) throw new Error("같은 시간에 이미 확정된 일정이 있어요.");
+      if(!confirm(`${x.owner} 대표님과 ${fmtD(x.date)} ${x.time} (${x.mode})로 신청할까요?`)){ b.disabled=false; return; }
       await FB.book(x.id,me); sayS(`${x.owner} 대표님과 ${fmtD(x.date)} ${x.time} 일정이 확정됐어요.`);
     }else if(act==="cancel"){ await FB.cancel(b.dataset.id,me); sayS("신청을 취소했어요."); }
     else if(act==="del"){ if(!confirm("이 시간을 삭제할까요? 확정된 일정이면 상대 일정에서도 사라져요.")){ b.disabled=false; return; } await FB.del(b.dataset.id); sayS("삭제했어요."); }
-  }catch(err){ const m=err&&err.message||""; sayS(/permission|insufficient/i.test(m)?"저장이 거절됐어요. 그 사이에 일정이 바뀌었을 수 있어요. 목록을 확인하고 다시 눌러 주세요.":m||"저장하지 못했어요. 다시 시도해 주세요.",true); }
+  }catch(err){ const m=err&&err.message||""; b.disabled=false; sayS(/permission|insufficient/i.test(m)?"저장이 거절됐어요. 그 사이에 일정이 바뀌었을 수 있어요. 목록을 확인하고 다시 눌러 주세요.":m||"저장하지 못했어요. 다시 시도해 주세요.",true); }
 });
 window.SCHED_RENDER=()=>{ if(onSched()) renderSched(); };   // Firebase 쪽이 데이터가 바뀔 때 부른다
-$("me").addEventListener("change",()=>window.SCHED_RENDER());
+$("me").addEventListener("change",()=>{ SC.draft=new Map(); SC.msg=""; window.SCHED_RENDER(); });
 { const P=new URLSearchParams(location.search).get("me"); if(P&&M.some(m=>m.n===P)){ $("me").value=P; pick(P); } }   // 선샤인에서 ?me=이름 으로 열면 이름이 선택돼 있다
 if(location.hash==="#sched") setTab("sched");
 </script>
@@ -232,7 +342,9 @@ const poke=()=>{ try{ window.SCHED_RENDER&&window.SCHED_RENDER(); }catch(e){} };
     const db=F.initializeFirestore(app,{experimentalAutoDetectLongPolling:true});
     const col=F.collection(db,"slots"), ref=id=>F.doc(db,"slots",id);
     const d0=new Date(), today=d0.getFullYear()+"-"+String(d0.getMonth()+1).padStart(2,"0")+"-"+String(d0.getDate()).padStart(2,"0");
-    FB.open=(owner,date,times,mode,memo)=>Promise.all(times.map(t=>F.setDoc(ref(date+"_"+t+"_"+owner),{owner,date,time:t,mode,memo,status:"open",booker:null,createdAt:F.serverTimestamp()})));
+    FB.openMany=(owner,items,memo)=>Promise.all(items.map(x=>F.setDoc(ref(x.date+"_"+x.time+"_"+owner),{owner,date:x.date,time:x.time,mode:x.mode,memo,status:"open",booker:null,createdAt:F.serverTimestamp()})));
+    // 열린 칸만 지운다: 그 사이에 신청돼 확정된 칸은 거절하고 그대로 둔다
+    FB.removeOpen=ids=>Promise.allSettled(ids.map(id=>F.runTransaction(db,async tx=>{ const s=await tx.get(ref(id)); if(!s.exists()) return; if(s.data().status!=="open") throw new Error("이미 신청된 칸이에요."); tx.delete(ref(id)); })));
     FB.del=id=>F.deleteDoc(ref(id));
     // 같은 칸을 두 사람이 동시에 눌러도 한 사람만 확정된다 (트랜잭션 + 보안 규칙 이중 방어)
     FB.book=(id,who)=>F.runTransaction(db,async tx=>{ const s=await tx.get(ref(id)); if(!s.exists()) throw new Error("이 일정은 이미 사라졌어요."); const d=s.data();
