@@ -146,7 +146,7 @@ $("sv").onclick = async () => {
 const wrap=document.querySelector(".w"), byN=Object.fromEntries(M.map(m=>[m.n,m]));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const SC={date:"",times:new Set(),mode:"둘 다",memo:"",msg:"",err:false};
-const SC_TIMES=["07:00","08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00","18:00","19:00","20:00","21:00"];
+const SC_TIMES=[]; for(let m=9*60;m<=18*60;m+=30) SC_TIMES.push(String(m/60|0).padStart(2,"0")+":"+(m%60?"30":"00"));   // 09:00~18:00, 30분 단위
 const DOWK=["일","월","화","수","목","금","토"];
 const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const fmtD=t=>{ const [y,m,d]=t.split("-").map(Number); return `${m}/${d} (${DOWK[new Date(y,m-1,d).getDay()]})`; };
@@ -174,7 +174,7 @@ function renderSched(){
     <div class="sec">내가 만날 수 있는 시간 열기 <small>(${esc(me)} 이름으로 저장돼요)</small></div>
     <div class="row">
       <div class="fld"><label for="scDate">날짜</label><input type="date" id="scDate" min="${t0}" value="${esc(SC.date)}"></div>
-      <div class="fld"><label>시작 시간 (여러 개 고를 수 있어요)</label><div class="chips">${SC_TIMES.map(t=>`<button class="${SC.times.has(t)?"on":""}" data-sact="time" data-v="${t}">${t}</button>`).join("")}</div></div>
+      <div class="fld"><label>시작 시간 · 30분 단위 (여러 개 고를 수 있어요)</label><div class="chips">${SC_TIMES.map(t=>`<button class="${SC.times.has(t)?"on":""}" data-sact="time" data-v="${t}">${t}</button>`).join("")}</div></div>
       <div class="fld"><label for="scMode">방식</label><select id="scMode">${["둘 다","대면","온라인"].map(m=>`<option${SC.mode===m?" selected":""}>${m}</option>`).join("")}</select></div>
       <div class="fld"><label for="scMemo">장소·메모 (선택)</label><input type="text" id="scMemo" maxlength="80" placeholder="예: 서면 사무실, 점심 같이 가능" value="${esc(SC.memo)}"></div>
       <button class="act pr" style="width:100%;padding:13px;font-size:16px" data-sact="open">이 시간들 열기</button>
