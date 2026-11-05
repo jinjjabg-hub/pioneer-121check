@@ -77,6 +77,7 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .c-in{background:var(--mg)!important}.c-on{background:var(--yl)!important}.c-bo{background:linear-gradient(135deg,var(--mg) 50%,var(--yl) 50%)!important}
 .c-bk{background:var(--tx)!important;color:var(--bg);font-size:10px;font-weight:700;line-height:1;overflow:hidden;white-space:nowrap;cursor:default}
 .ban{background:var(--yl-soft);border:2px solid var(--yl);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.rb{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--yl-soft);border:1px solid var(--yl);color:var(--tx);vertical-align:1px}
 .ban b{font-size:16px}.ban .ln{font-size:14px}
 .tc.done{background:var(--bd);color:var(--mu);text-decoration:line-through;cursor:default}
 .tc.hit{outline:3px solid var(--tx);outline-offset:2px;box-shadow:0 0 0 1px var(--card)}
@@ -150,7 +151,7 @@ input[type=search]{margin-top:0}
 // 구글 Apps Script 웹앱 주소(tools/121check-apps-script.gs 배포 후 붙여넣기). 비워 두면 이 기기에만 저장됩니다.
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbyq1xJ27wttPpuxUJYK2EUIlpFlARy0_1w532YTCfd7fEMXMCIOcGB0SoqOKZ5mXa6n/exec";
 const LV = ["아직","패스포트","아는","신뢰","수익"];
-const MEMBERS = /*MEMBERS*/[{"n":"송승훈","co":"T.M LINK","f":"앱,웹개발(디지탈명함)"},{"n":"이상호","co":"㈜디자인시선","f":"인테리어(숙박,병원,상가)"},{"n":"조현우","co":"디에이치원","f":"고용지원금"},{"n":"김근우","co":"종합광고기획 창운","f":"인쇄,디자인"},{"n":"김경태","co":"늘곁애","f":"상조서비스"},{"n":"김지현","co":"감성온도","f":"숙박업(컨설팅)"},{"n":"심학봉","co":"㈜더베스트 금융서비스","f":"손해보험"},{"n":"이화춘","co":"이화춘뷰티랩","f":"반영구 뷰티"},{"n":"이소연","co":"해피드로잉","f":"미술교육"},{"n":"임춘식","co":"꽃가람","f":"꽃/화환 유통"},{"n":"정명수","co":"에어컨설팅","f":"에어컨 설치관리"},{"n":"홍정택","co":"스타인컴퍼니","f":"경호"},{"n":"박진성","co":"(주)진성부동산중개법인","f":"부동산중개 및 컨설팅"},{"n":"박미성","co":"울림 컴퍼니","f":"경영컨설팅"},{"n":"이채홍","co":"법무사사무소 검인","f":"법무사(형사사건전문)"},{"n":"조은영","co":"에어월드시스템BS","f":"냉동공조&실내공기정화솔루션"},{"n":"박선영","co":"㈜경동코퍼레이션","f":"안전용품(작업화/작업복/실리콘)"},{"n":"정상현","co":"아메리츠파이낸셜","f":"외국보험"},{"n":"이도현","co":"AIA프리미어 파트너","f":"생명보험"},{"n":"마루이","co":"벨라우모","f":"맞춤수제양복"},{"n":"문성우","co":"당고","f":"요식업(고기구이)"},{"n":"윤민수","co":"㈜이엘그룹","f":"태닝"},{"n":"이수민","co":"새벽 한방울(황지상회)","f":"기름,곡물 가공품"},{"n":"박지형","co":"세움세무","f":"세무"},{"n":"박병준","co":"드로아","f":"소파,가구 제작"},{"n":"조진성","co":"에이쁠","f":"청소"},{"n":"이해경","co":"데일카네기","f":"교육"},{"n":"이은성","co":"밝은소리라이프","f":"기업행사, MC"},{"n":"오예준","co":"청년커튼&블라인드 부산본점","f":"커튼,블라인드"},{"n":"이훈","co":"에이치컨설팅","f":"병원컨설팅"},{"n":"김여련","co":"법무법인 시우","f":"변호사"},{"n":"최소은","co":"","f":""},{"n":"이다경","co":"호림유통","f":"학교, 단체급식 납품"},{"n":"송이","co":"AIA프리미어 파트너스","f":"대물보험"}]/*END*/;
+const MEMBERS = /*MEMBERS*/[{"n":"송승훈","co":"T.M LINK","f":"앱,웹개발(디지탈명함)"},{"n":"이상호","co":"㈜디자인시선","f":"인테리어(숙박,병원,상가)"},{"n":"조현우","co":"디에이치원","f":"고용지원금"},{"n":"김근우","co":"종합광고기획 창운","f":"인쇄,디자인"},{"n":"김경태","co":"늘곁애","f":"상조서비스"},{"n":"김지현","co":"감성온도","f":"숙박업(컨설팅)"},{"n":"심학봉","co":"㈜더베스트 금융서비스","f":"손해보험"},{"n":"이화춘","co":"이화춘뷰티랩","f":"반영구 뷰티"},{"n":"이소연","co":"해피드로잉","f":"미술교육"},{"n":"임춘식","co":"꽃가람","f":"꽃/화환 유통"},{"n":"정명수","co":"에어컨설팅","f":"에어컨 설치관리"},{"n":"홍정택","co":"스타인컴퍼니","f":"경호"},{"n":"박진성","co":"(주)진성부동산중개법인","f":"부동산중개 및 컨설팅"},{"n":"박미성","co":"울림 컴퍼니","f":"경영컨설팅"},{"n":"이채홍","co":"법무사사무소 검인","f":"법무사(형사사건전문)"},{"n":"조은영","co":"에어월드시스템BS","f":"냉동공조&실내공기정화솔루션"},{"n":"박선영","co":"㈜경동코퍼레이션","f":"안전용품(작업화/작업복/실리콘)"},{"n":"정상현","co":"아메리츠파이낸셜","f":"외국보험"},{"n":"이도현","co":"AIA프리미어 파트너","f":"생명보험"},{"n":"마루이","co":"벨라우모","f":"맞춤수제양복"},{"n":"문성우","co":"당고","f":"요식업(고기구이)"},{"n":"윤민수","co":"㈜이엘그룹","f":"태닝"},{"n":"이수민","co":"새벽 한방울(황지상회)","f":"기름,곡물 가공품"},{"n":"박지형","co":"세움세무","f":"세무"},{"n":"박병준","co":"드로아","f":"소파,가구 제작"},{"n":"조진성","co":"에이쁠","f":"청소"},{"n":"이해경","co":"데일카네기","f":"교육"},{"n":"이은성","co":"밝은소리라이프","f":"기업행사, MC"},{"n":"오예준","co":"청년커튼&블라인드 부산본점","f":"커튼,블라인드"},{"n":"이훈","co":"에이치컨설팅","f":"병원컨설팅"},{"n":"김여련","co":"법무법인 시우","f":"변호사"},{"n":"최소은","co":"","f":""},{"n":"이다경","co":"호림유통","f":"학교, 단체급식 납품"},{"n":"송이","co":"AIA프리미어 파트너스","f":"대물보험"},{"n":"이서원","co":"","f":"","role":"앰배서더"},{"n":"이헌영","co":"","f":"","role":"앰배서더"},{"n":"김성일","co":"","f":"","role":"앰배서더"}]/*END*/;
 let M = MEMBERS, me = "", ans = {}, PIN = "";
 const $ = id => document.getElementById(id);
 const key = n => "121check:" + n;
@@ -181,7 +182,7 @@ function render() {
   const rows = M.filter(m => m.n !== me && (!q || (m.n + (m.co || "")).includes(q)));
   $("list").innerHTML = rows.map(m => {
     const v = ans[m.n] || 0;
-    return `<div class="row"><span class="nm">${m.n}</span> <span class="co">${m.co || ""}${m.f ? " · " + m.f : ""}</span>
+    return `<div class="row"><span class="nm">${m.n}</span>${m.role ? ` <span class="rb">${m.role}</span>` : ""} <span class="co">${m.co || ""}${m.f ? " · " + m.f : ""}</span>
     <div class="lv">${LV.map((t, i) => `<button class="${i === v ? "on l" + i : ""}" data-n="${m.n}" data-l="${i}">${t}</button>`).join("")}</div></div>`;
   }).join("");
   stat();
@@ -270,7 +271,7 @@ const passQ=x=>{ const q=SC.q.trim(); return !q||(x.owner+(byN[x.owner]?byN[x.ow
 const visFilter=x=>passMode(x)&&passCell(x)&&passQ(x);
 const groupHTML=(list,chip)=>{ const byDate={}; list.forEach(x=>{ ((byDate[x.date]=byDate[x.date]||{})[x.owner]=byDate[x.date][x.owner]||[]).push(x); });
   return Object.keys(byDate).sort().map(d=>`<div class="day">${fmtD(d)}</div>${Object.keys(byDate[d]).map(o=>{ const L=byDate[d][o].sort((a,b)=>a.time.localeCompare(b.time)), m=byN[o];
-    return `<div class="row"><span class="nm">${esc(o)}</span> <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span><div class="tcs">${L.map(chip).join("")}</div></div>`; }).join("")}`).join(""); };
+    return `<div class="row"><span class="nm">${esc(o)}</span>${m&&m.role?` <span class="rb">${esc(m.role)}</span>`:""} <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span><div class="tcs">${L.map(chip).join("")}</div></div>`; }).join("")}`).join(""); };
 function openListHTML(others){
   const base=others.filter(x=>passMode(x)&&passQ(x)), chip=(x,hit)=>`<button class="tc ${MCLS[x.mode]}${hit?" hit":""}" data-sact="book" data-id="${esc(x.id)}">${x.time}</button>`;
   if(!SC.fCell){
@@ -284,7 +285,7 @@ function openListHTML(others){
   const first=o=>by[o].filter(passCell).map(x=>x.date+x.time).sort()[0];
   return '<div class="hint">테두리가 있는 시간이 방금 고른 시간대예요. 다른 시간도 눌러 신청할 수 있어요.</div>'+Object.keys(by).sort((a,b)=>first(a).localeCompare(first(b))||a.localeCompare(b,"ko")).map(o=>{
     const m=byN[o], L=by[o].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)), dates=[...new Set(L.map(x=>x.date))];
-    return `<div class="row"><span class="nm">${esc(o)}</span> <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span>${dates.map(d=>`<div class="pdl"><span class="pdd">${fmtD(d)}</span>${L.filter(x=>x.date===d).map(x=>chip(x,passCell(x))).join("")}</div>`).join("")}</div>`; }).join("");
+    return `<div class="row"><span class="nm">${esc(o)}</span>${m&&m.role?` <span class="rb">${esc(m.role)}</span>`:""} <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span>${dates.map(d=>`<div class="pdl"><span class="pdd">${fmtD(d)}</span>${L.filter(x=>x.date===d).map(x=>chip(x,passCell(x))).join("")}</div>`).join("")}</div>`; }).join("");
 }
 // 다른 사람이 이미 신청해서 가능 일정에서 빠진 시간 (누가 신청했는지는 보여 주지 않는다)
 function takenHTML(taken){

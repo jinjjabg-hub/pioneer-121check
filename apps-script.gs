@@ -42,7 +42,10 @@ const PINS = {
   "김여련": "____",
   "최소은": "____",
   "이다경": "____",
-  "송이": "____"
+  "송이": "____",
+  "이서원": "____",
+  "이헌영": "____",
+  "김성일": "____"
 };
 function ok_(me, pin) { return !!me && Object.prototype.hasOwnProperty.call(PINS, me) && PINS[me] === String(pin || ""); }
 
