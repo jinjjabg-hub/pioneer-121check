@@ -79,6 +79,10 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .ban{background:var(--yl-soft);border:2px solid var(--yl);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
 .ban b{font-size:16px}.ban .ln{font-size:14px}
 .tc.done{background:var(--bd);color:var(--mu);text-decoration:line-through;cursor:default}
+.tc.hit{outline:3px solid var(--tx);outline-offset:2px;box-shadow:0 0 0 1px var(--card)}
+.pdl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.pdd{min-width:76px;font-size:13px;font-weight:700;color:var(--mu)}
+.hint{font-size:13px;color:var(--mu);margin:2px 0 6px}
 .tk summary{cursor:pointer;color:var(--mu);font-size:14px;margin:10px 0 4px}
 .sw.dirty{outline:2px solid var(--tx);outline-offset:-2px;background:transparent}
 .wk{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
@@ -260,17 +264,27 @@ function heatHTML(others){
     ${BANDS.map((b,bi)=>`<div class="hl">${b[0]}<small>${b[1]}</small></div>${DOW_ORDER.map(w=>{ const n=(cnt[w+"|"+bi]||{size:0}).size;
       return `<button class="hc${sel&&sel.dow===w&&sel.bi===bi?" sel":""}" style="--a:${n?Math.round(18+n/mx*60):0}%" data-sact="hm" data-dow="${w}" data-bi="${bi}"${n?"":" disabled"}>${n||""}</button>`; }).join("")}`).join("")}</div>`; }
 
-const visFilter=x=>{ const q=SC.q.trim();
-  return (SC.fMode==="전체"||x.mode===SC.fMode||x.mode==="둘 다")
-    &&(!SC.fCell||(pdate(x.date).getDay()===SC.fCell.dow&&BANDS[SC.fCell.bi][2](x.time)))
-    &&(!q||(x.owner+(byN[x.owner]?byN[x.owner].co+byN[x.owner].f:"")).includes(q)); };
+const passMode=x=>SC.fMode==="전체"||x.mode===SC.fMode||x.mode==="둘 다";
+const passCell=x=>!SC.fCell||(pdate(x.date).getDay()===SC.fCell.dow&&BANDS[SC.fCell.bi][2](x.time));
+const passQ=x=>{ const q=SC.q.trim(); return !q||(x.owner+(byN[x.owner]?byN[x.owner].co+byN[x.owner].f:"")).includes(q); };
+const visFilter=x=>passMode(x)&&passCell(x)&&passQ(x);
 const groupHTML=(list,chip)=>{ const byDate={}; list.forEach(x=>{ ((byDate[x.date]=byDate[x.date]||{})[x.owner]=byDate[x.date][x.owner]||[]).push(x); });
   return Object.keys(byDate).sort().map(d=>`<div class="day">${fmtD(d)}</div>${Object.keys(byDate[d]).map(o=>{ const L=byDate[d][o].sort((a,b)=>a.time.localeCompare(b.time)), m=byN[o];
     return `<div class="row"><span class="nm">${esc(o)}</span> <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span><div class="tcs">${L.map(chip).join("")}</div></div>`; }).join("")}`).join(""); };
 function openListHTML(others){
-  const vis=others.filter(visFilter);
-  if(!vis.length) return '<div class="emp">조건에 맞는 열린 시간이 없어요.</div>';
-  return groupHTML(vis,x=>`<button class="tc ${MCLS[x.mode]}" data-sact="book" data-id="${esc(x.id)}">${x.time}</button>`);
+  const base=others.filter(x=>passMode(x)&&passQ(x)), chip=(x,hit)=>`<button class="tc ${MCLS[x.mode]}${hit?" hit":""}" data-sact="book" data-id="${esc(x.id)}">${x.time}</button>`;
+  if(!SC.fCell){
+    if(!base.length) return '<div class="emp">조건에 맞는 열린 시간이 없어요.</div>';
+    return groupHTML(base,x=>chip(x,false));
+  }
+  // 한눈에 보기 칸을 눌렀을 때: 그 시간대에 가능한 사람 → 그 사람이 열어 둔 모든 시간(누른 시간대는 테두리로 강조)
+  const owners=new Set(base.filter(passCell).map(x=>x.owner));
+  if(!owners.size) return '<div class="emp">조건에 맞는 열린 시간이 없어요.</div>';
+  const by={}; base.filter(x=>owners.has(x.owner)).forEach(x=>(by[x.owner]=by[x.owner]||[]).push(x));
+  const first=o=>by[o].filter(passCell).map(x=>x.date+x.time).sort()[0];
+  return '<div class="hint">테두리가 있는 시간이 방금 고른 시간대예요. 다른 시간도 눌러 신청할 수 있어요.</div>'+Object.keys(by).sort((a,b)=>first(a).localeCompare(first(b))||a.localeCompare(b,"ko")).map(o=>{
+    const m=byN[o], L=by[o].sort((a,b)=>(a.date+a.time).localeCompare(b.date+b.time)), dates=[...new Set(L.map(x=>x.date))];
+    return `<div class="row"><span class="nm">${esc(o)}</span> <span class="co">${m?esc(m.co||"")+(m.f?" · "+esc(m.f):""):""}${L[0].memo?" · "+esc(L[0].memo):""}</span>${dates.map(d=>`<div class="pdl"><span class="pdd">${fmtD(d)}</span>${L.filter(x=>x.date===d).map(x=>chip(x,passCell(x))).join("")}</div>`).join("")}</div>`; }).join("");
 }
 // 다른 사람이 이미 신청해서 가능 일정에서 빠진 시간 (누가 신청했는지는 보여 주지 않는다)
 function takenHTML(taken){
@@ -321,11 +335,11 @@ function renderSched(){
     </div>
     <div class="sec">내 확정 일정 <small>${booked.length}건</small></div>
     ${booked.length?booked.map(bk).join(""):'<div class="emp">아직 확정된 일정이 없어요. 아래에서 다른 멤버의 시간을 눌러 신청해 보세요.</div>'}
-    <div class="sec">한눈에 보기 <small>숫자 = 시간을 열어 둔 멤버 수 · 칸을 누르면 그 시간대만 봐요</small></div>
+    <div class="sec">한눈에 보기 <small>숫자 = 그 시간대에 가능한 멤버 수 · 칸을 누르면 그 사람들과 가능한 시간이 아래에 나와요</small></div>
     <div class="row">
       <div class="fm" id="fm">${["전체","대면","온라인"].map(m=>`<button class="${SC.fMode===m?"on":""}" data-sact="fmode" data-m="${m}">${m==="전체"?"전체":m+" 가능"}</button>`).join("")}<span class="co">'둘 다 가능' 포함</span></div>
       ${heatHTML(others)}
-      ${SC.fCell?`<button class="act" data-sact="hmclear" style="margin-top:8px">${DOWK[SC.fCell.dow]}요일 ${BANDS[SC.fCell.bi][0]} 보는 중 ✕</button>`:""}
+      ${SC.fCell?`<button class="act" data-sact="hmclear" style="margin-top:8px">${DOWK[SC.fCell.dow]}요일 ${BANDS[SC.fCell.bi][0]} 가능 ${new Set(others.filter(passCell).map(x=>x.owner)).size}명 보는 중 ✕</button>`:""}
     </div>
     <div class="sec">다른 멤버가 열어 둔 시간 <small>시간을 누르면 신청해요</small></div>
     <div class="fld"><input type="search" id="scQ" placeholder="이름·회사·업종 검색" value="${esc(SC.q)}"></div>
