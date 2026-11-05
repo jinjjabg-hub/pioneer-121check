@@ -118,7 +118,7 @@ input[type=search]{margin-top:0}
     <div class="lmsg" id="lgMsg" role="status"></div>
   </div>
   <div id="ubar"><span><b id="ubName"></b>님으로 로그인됨</span><button class="act" id="lgOut">로그아웃</button></div>
-  <div class="tabs" id="tabs"><button class="on" data-t="check">121 체크</button><button data-t="sched">121 일정</button></div>
+  <div class="tabs" id="tabs"><button class="on" data-t="sched">121 일정</button><button data-t="check">121 체크</button></div>
   <p class="sub" id="subCheck">누구와 어느 단계까지 121을 했는지 스스로 체크해요. 저장하면 구글시트에 모입니다.</p>
   <div class="top">
     <select id="me"><option value="">내 이름을 선택하세요</option></select>
@@ -219,7 +219,7 @@ const isPast=(d,t)=>{ const today=ymd(new Date()); return d<today||(d===today&&t
 const onSched=()=>wrap.classList.contains("sched");
 let MINE={};   // 내가 연 일정 ("날짜|시간" → 일정)
 function setTab(t){ wrap.classList.toggle("sched",t==="sched"); document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
-  try{ history.replaceState(null,"",t==="sched"?"#sched":location.pathname+location.search); }catch(e){} if(t==="sched") renderSched(); }
+  try{ history.replaceState(null,"","#"+t); }catch(e){} if(t==="sched") renderSched(); }
 $("tabs").onclick=e=>{ const b=e.target.closest("button[data-t]"); if(b) setTab(b.dataset.t); };
 
 function weekDates(){ const t=new Date(); t.setHours(0,0,0,0); const mon=new Date(t); mon.setDate(t.getDate()-((t.getDay()+6)%7)+7*SC.week);
@@ -381,7 +381,7 @@ $("lgPin").addEventListener("keydown", e => { if (e.key === "Enter") $("lgBtn").
 $("lgOut").onclick = async () => { try { if (window.FB && FB.logout) await FB.logout(); } catch (e) {} leave("로그아웃했어요."); };
 // 이전에 로그인한 기기라면 번호 없이 자동으로 들어온다 (서버의 로그인 기록 + 이 기기에 저장된 번호가 모두 있을 때만)
 window.ON_AUTH = name => { if (name && !me && ls.get("121check:pin")) enter(name, ls.get("121check:pin")); else if (name) $("lgName").value = name; };
-if(location.hash==="#sched") setTab("sched");
+setTab(location.hash==="#check"?"check":"sched");   // 첫 탭은 121 일정
 </script>
 <script type="module">
 /* ===== 121 일정 저장소 (Firebase Firestore, 프로젝트 pioneer-121) =====
