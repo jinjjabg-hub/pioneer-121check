@@ -91,6 +91,8 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .gh{font-size:11px;color:var(--mu);text-align:center;background:transparent;border:0;padding:0;font-family:inherit}
 .gd{font-size:13px;font-weight:700;color:var(--tx);cursor:pointer;line-height:1.2;padding:4px 0}.gd small{display:block;font-weight:400;font-size:10px;color:var(--mu)}
 .gt{cursor:pointer;text-align:right;padding-right:4px;line-height:30px}
+.gb{cursor:pointer;text-align:left;font-size:12px;font-weight:700;color:var(--tx);line-height:1.15;padding:4px 0 0 2px;margin-top:6px}.gb small{display:block;font-weight:400;font-size:10px;color:var(--mu)}
+.gbd{cursor:pointer;height:24px;margin-top:6px;font-size:10px;font-weight:700;color:var(--pr);border:1px dashed var(--bd);border-radius:6px;background:transparent}.gbd:hover{background:var(--yl-soft)}
 .gc{height:30px;border:1px solid var(--bd);background:transparent;border-radius:6px;padding:0;cursor:pointer;touch-action:manipulation}
 .gc.dirty{outline:2px dashed var(--tx);outline-offset:-2px}
 .gc.past{opacity:.3;cursor:default}
@@ -216,10 +218,10 @@ $("sv").onclick = async () => {
 const wrap=document.querySelector(".w"), byN=Object.fromEntries(M.map(m=>[m.n,m]));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const SC={week:0,brush:"둘 다",draft:new Map(),memo:"",msg:"",err:false,fMode:"전체",fCell:null,q:"",drag:null,skipClick:false};
-const SC_TIMES=[]; for(let m=9*60;m<=18*60;m+=30) SC_TIMES.push(String(m/60|0).padStart(2,"0")+":"+(m%60?"30":"00"));   // 09:00~18:00, 30분 단위
+const SC_TIMES=[]; for(let h=9;h<=18;h++) SC_TIMES.push(String(h).padStart(2,"0")+":00");   // 09:00~18:00, 1시간 단위
 const DOWK=["일","월","화","수","목","금","토"], DOW_ORDER=[1,2,3,4,5,6,0];
 const MCLS={"대면":"m-in","온라인":"m-on","둘 다":"m-bo"}, CCLS={"대면":"c-in","온라인":"c-on","둘 다":"c-bo"};
-const BANDS=[["오전","09–12시",t=>t<"12:00"],["점심","12–14시",t=>t>="12:00"&&t<"14:00"],["오후","14–18시",t=>t>="14:00"&&t<"18:00"],["저녁","18시 이후",t=>t>="18:00"]];
+const BANDS=[["오전","09–12시",t=>t<"12:00"],["점심","12–14시",t=>t>="12:00"&&t<"14:00"],["오후1","14–16시",t=>t>="14:00"&&t<"16:00"],["오후2","16시~",t=>t>="16:00"]];
 const ymd=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const pdate=t=>{ const [y,m,d]=t.split("-").map(Number); return new Date(y,m-1,d); };
 const fmtD=t=>{ const d=pdate(t); return `${d.getMonth()+1}/${d.getDate()} (${DOWK[d.getDay()]})`; };
@@ -247,14 +249,19 @@ function refreshGrid(){
   const n=SC.draft.size, sb=$("gsave"), ub=$("gundo");
   if(sb){ sb.disabled=!n; sb.textContent=n?`변경 ${n}칸 저장`:"저장할 변경이 없어요"; } if(ub) ub.disabled=!n;
 }
+const rowTimes=ds=>{ const ex=new Set(); [...Object.keys(MINE),...Object.keys(BKR)].forEach(k=>{ const [d,t]=k.split("|"); if(ds.includes(d)&&!SC_TIMES.includes(t)) ex.add(t); }); return [...SC_TIMES,...ex].sort(); };
 function bulk(list,d_t){   // 줄 전체 칠하기: 이미 모두 이 방식이면 지우고, 아니면 모두 이 방식으로
   const cells=list.filter(([d,t])=>!isPast(d,t)&&!eff(d,t).booked), all=cells.length&&cells.every(([d,t])=>eff(d,t).mode===SC.brush);
   cells.forEach(([d,t])=>setCell(d,t,all?null:SC.brush)); refreshGrid(); }
 
 function gridHTML(){
-  const ds=weekDates();
+  const ds=weekDates(), times=rowTimes(ds);
+  const cellsOf=t=>ds.map(d=>`<button class="${cellCls(d,t)}" data-d="${d}" data-t="${t}" aria-label="${fmtD(d)} ${t}"${isPast(d,t)?" disabled":""}>${eff(d,t).booked?esc(shortName(eff(d,t).with)):""}</button>`).join("");
+  const band=(b,bi)=>{ const ts=times.filter(b[2]); if(!ts.length) return "";
+    return `<button class="gh gb" data-sact="hband" data-b="${bi}" title="${b[0]} 전체를 한 번에 칠하기">${b[0]}<small>${b[1]}</small></button>${ds.map(d=>`<button class="gh gbd" data-sact="hband" data-b="${bi}" data-d="${d}" title="${fmtD(d)} ${b[0]} 전체">▾ 전체</button>`).join("")}`
+      +ts.map(t=>`<button class="gh gt" data-sact="hrow" data-t="${t}">${t}</button>${cellsOf(t)}`).join(""); };
   return `<div class="gw" id="gridw"><div class="gh"></div>${ds.map(d=>{ const p=pdate(d); return `<button class="gh gd" data-sact="hday" data-d="${d}">${DOWK[p.getDay()]}<small>${p.getMonth()+1}/${p.getDate()}</small></button>`; }).join("")}
-    ${SC_TIMES.map(t=>`<button class="gh gt" data-sact="hrow" data-t="${t}">${t}</button>${ds.map(d=>`<button class="${cellCls(d,t)}" data-d="${d}" data-t="${t}" aria-label="${fmtD(d)} ${t}"${isPast(d,t)?" disabled":""}>${eff(d,t).booked?esc(shortName(eff(d,t).with)):""}</button>`).join("")}`).join("")}</div>`; }
+    ${BANDS.map(band).join("")}</div>`; }
 
 function heatHTML(others){
   const cnt={}; let mx=1;
@@ -324,7 +331,7 @@ function renderSched(){
     ${bannerHTML(all)}
     <div class="sec">내가 만날 수 있는 시간 열기 <small>(${esc(me)} 이름으로 저장돼요)</small></div>
     <div class="row">
-      <div class="gx">방식을 고른 뒤 칸을 누르면 칠해지고, 같은 방식으로 다시 누르면 지워져요. 날짜·시간 이름을 누르면 한 줄이 한 번에 칠해져요. <span class="gx2">(컴퓨터는 끌어서 여러 칸 칠하기도 돼요)</span></div>
+      <div class="gx">방식을 고른 뒤 칸을 누르면 칠해지고, 같은 방식으로 다시 누르면 지워져요. 날짜·시간 이름을 누르면 한 줄이, <b>오전·점심·오후 구간 이름</b>(또는 그 아래 "▾ 전체")을 누르면 그 구간이 한 번에 칠해져요. <span class="gx2">(컴퓨터는 끌어서 여러 칸 칠하기도 돼요)</span></div>
       <div class="brush" id="brush">${["대면","온라인","둘 다"].map(m=>`<button class="${SC.brush===m?"on":""}" data-sact="brush" data-m="${m}"><i class="sw ${CCLS[m]}"></i>${m==="대면"?"대면 미팅":m==="온라인"?"온라인 줌":"둘 다 가능"}</button>`).join("")}</div>
       <div class="wk"><button class="act" data-sact="wk" data-v="-1"${SC.week<=0?" disabled":""}>◀</button><b>${rng}</b><button class="act" data-sact="wk" data-v="1"${SC.week>=3?" disabled":""}>▶</button></div>
       ${gridHTML()}
@@ -371,7 +378,8 @@ sp.addEventListener("click",async e=>{
   const FB=window.FB, act=b.dataset.sact, sayS=(m,err)=>{ SC.msg=m; SC.err=!!err; renderSched(); };
   if(act==="brush"){ SC.brush=b.dataset.m; renderSched(); return; }
   if(act==="wk"){ SC.week=Math.max(0,Math.min(3,SC.week+ +b.dataset.v)); renderSched(); return; }
-  if(act==="hday"){ bulk(SC_TIMES.map(t=>[b.dataset.d,t])); return; }
+  if(act==="hday"){ bulk(rowTimes(weekDates()).map(t=>[b.dataset.d,t])); return; }
+  if(act==="hband"){ const ds=weekDates(), ts=rowTimes(ds).filter(BANDS[+b.dataset.b][2]); bulk((b.dataset.d?[b.dataset.d]:ds).flatMap(d=>ts.map(t=>[d,t]))); return; }
   if(act==="hrow"){ bulk(weekDates().map(d=>[d,b.dataset.t])); return; }
   if(act==="undo"){ SC.draft=new Map(); SC.msg=""; renderSched(); return; }
   if(act==="seen"){ if(FB&&FB.state==="ready"){ const t0=ymd(new Date()); const k=new Set(readSeen()); unseenBookings(FB.slots.filter(x=>x.date>=t0)).forEach(x=>k.add(x.id+"|"+x.booker)); ls.set(seenKey(),JSON.stringify([...k])); } renderSched(); return; }
