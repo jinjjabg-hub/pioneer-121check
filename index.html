@@ -6,6 +6,12 @@
 <title>파이오니어 121 체크</title>
 <meta name="description" content="BNI 파이오니어 챕터 121 체크와 일정. 누구와 어디까지 했는지, 언제 만날지 한눈에.">
 <meta name="theme-color" content="#15803d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="121 체크">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:site_name" content="파이오니어 121 체크">
@@ -62,7 +68,9 @@ select,input[type=search]{width:100%;padding:12px;font-size:17px;border:1px soli
 .act.pr{background:var(--pr);border-color:var(--pr);color:var(--onpr);font-weight:700}
 .act:disabled{opacity:.5}
 .sl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
-.sl .ac{display:flex;gap:6px}
+.sl .ac{display:flex;gap:6px;flex-wrap:wrap}
+.calc{flex-basis:100%;border-top:1px dashed var(--bd);padding-top:8px;margin-top:2px}.calc .ac{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.ban .ln .act{margin-left:6px;padding:5px 9px;font-size:13px}
 .tg{font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--bd);color:var(--mu);white-space:nowrap}
 .tg.ok{background:var(--ok);color:var(--onpr)}
 .day{font-size:13px;font-weight:700;color:var(--mu);margin:14px 0 2px}
@@ -217,7 +225,7 @@ $("sv").onclick = async () => {
 /* ===== 121 일정 (Firebase Firestore): 칸을 눌러 시간을 열고, 열린 시간을 눌러 신청하면 확정 ===== */
 const wrap=document.querySelector(".w"), byN=Object.fromEntries(M.map(m=>[m.n,m]));
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const SC={week:0,brush:"둘 다",draft:new Map(),memo:"",msg:"",err:false,fMode:"전체",fCell:null,q:"",drag:null,skipClick:false};
+const SC={week:0,brush:"대면",calId:null,draft:new Map(),memo:"",msg:"",err:false,fMode:"전체",fCell:null,q:"",drag:null,skipClick:false};
 const SC_TIMES=[]; for(let h=9;h<=18;h++) SC_TIMES.push(String(h).padStart(2,"0")+":00");   // 09:00~18:00, 1시간 단위
 const DOWK=["일","월","화","수","목","금","토"], DOW_ORDER=[1,2,3,4,5,6,0];
 const MCLS={"대면":"m-in","온라인":"m-on","둘 다":"m-bo"}, CCLS={"대면":"c-in","온라인":"c-on","둘 다":"c-bo"};
@@ -227,6 +235,20 @@ const pdate=t=>{ const [y,m,d]=t.split("-").map(Number); return new Date(y,m-1,d
 const fmtD=t=>{ const d=pdate(t); return `${d.getMonth()+1}/${d.getDate()} (${DOWK[d.getDay()]})`; };
 const nowHM=()=>{ const n=new Date(); return String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0"); };
 const isPast=(d,t)=>{ const today=ymd(new Date()); return d<today||(d===today&&t<=nowHM()); };
+/* 확정된 일정을 내 캘린더에 넣기: 구글 캘린더는 등록 화면을 바로 열고, 그 밖의 앱(애플·삼성·네이버·아웃룩 등)은 일정 파일(.ics)로 넣는다 */
+const calEv=(x)=>{ const other=x.owner===me?x.booker:x.owner, o=byN[other]||{}, [h,m]=x.time.split(":").map(Number), dur=m===0?60:30, p2=n=>String(n).padStart(2,"0"),
+  ds=x.date.replace(/-/g,""), st=ds+"T"+p2(h)+p2(m)+"00", e=new Date(2000,0,1,h,m+dur), en=ds+"T"+p2(e.getHours())+p2(e.getMinutes())+"00";
+  return {st,en,title:`121 · ${other}님`,loc:x.memo||"",desc:[x.mode,o.co,o.f].filter(Boolean).join(" · ")+"\nBNI 파이오니어 121",uid:x.id+"@pioneer-121"}; };
+const icsEsc=t=>String(t).replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/[,;]/g,c=>"\\"+c);
+function calGoogle(x){ const v=calEv(x); window.open("https://calendar.google.com/calendar/render?"+new URLSearchParams({action:"TEMPLATE",text:v.title,dates:v.st+"/"+v.en,ctz:"Asia/Seoul",details:v.desc,location:v.loc}).toString(),"_blank","noopener"); }
+function calIcs(x){ const v=calEv(x), now=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const txt=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//pioneer-121//KO","CALSCALE:GREGORIAN","BEGIN:VEVENT","UID:"+v.uid,"DTSTAMP:"+now,"DTSTART;TZID=Asia/Seoul:"+v.st,"DTEND;TZID=Asia/Seoul:"+v.en,
+    "SUMMARY:"+icsEsc(v.title),"LOCATION:"+icsEsc(v.loc),"DESCRIPTION:"+icsEsc(v.desc),"BEGIN:VALARM","TRIGGER:-PT1H","ACTION:DISPLAY","DESCRIPTION:121 미팅 1시간 전","END:VALARM","END:VEVENT","END:VCALENDAR"].join("\r\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([txt],{type:"text/calendar;charset=utf-8"})); a.download="121-"+x.date+"-"+x.time.replace(":","")+".ics"; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }
+const calPick=()=>ls.get("cal_app")||"";
+const calChooser=x=>{ const pk=calPick(), c=(k,t)=>`<button class="act${pk===k?" pr":""}" data-sact="calgo" data-k="${k}" data-id="${esc(x.id)}">${t}</button>`;
+  return `<div class="calc"><div class="co">어느 캘린더에 넣을까요? <small>(고른 앱은 기억해요)</small></div><div class="ac">${c("google","구글 캘린더")}${c("ics","그 밖의 앱 (애플·삼성·네이버 등)")}</div><div class="co">'그 밖의 앱'은 내려받은 일정 파일을 열면 폰 캘린더에 들어가요. 취소돼도 캘린더에 넣은 일정은 직접 지워야 해요.</div></div>`; };
+const calBtn=x=>`<button class="act" data-sact="cal" data-id="${esc(x.id)}">📅 내 캘린더에 추가</button>`;
 const onSched=()=>wrap.classList.contains("sched");
 let MINE={}, BKR={};   // MINE: 내가 연 일정, BKR: 내가 신청해서 확정된 일정 ("날짜|시간" → 일정)
 const shortName=n=>n&&n.length>3?n.slice(0,3):(n||"");
@@ -310,7 +332,7 @@ function unseenBookings(all){
 }
 function bannerHTML(all){
   const u=unseenBookings(all); if(!u.length) return "";
-  return `<div class="ban" role="status"><b>🎉 일정이 잡혔어요</b>${u.map(x=>`<div class="ln"><b>${esc(x.booker)}</b>님이 내 <b>${fmtD(x.date)} ${esc(x.time)}</b> 시간을 신청했어요. 이 시간은 가능 일정에서 빠졌어요.</div>`).join("")}<div><button class="act pr" data-sact="seen">확인했어요</button></div></div>`;
+  return `<div class="ban" role="status"><b>🎉 일정이 잡혔어요</b>${u.map(x=>`<div class="ln"><b>${esc(x.booker)}</b>님이 내 <b>${fmtD(x.date)} ${esc(x.time)}</b> 시간을 신청했어요. 이 시간은 가능 일정에서 빠졌어요. ${calBtn(x)}</div>${SC.calId===x.id?calChooser(x):""}`).join("")}<div><button class="act pr" data-sact="seen">확인했어요</button></div></div>`;
 }
 
 function renderSched(){
@@ -326,7 +348,7 @@ function renderSched(){
   const taken=all.filter(x=>x.status==="booked"&&x.owner!==me&&x.booker!==me&&!isPast(x.date,x.time));
   const ds=weekDates(), rng=`${fmtD(ds[0])} ~ ${fmtD(ds[6])}`;
   const bk=x=>{ const other=x.owner===me?x.booker:x.owner, o=byN[other];
-    return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg ok">확정</span> <span class="tg">${esc(x.mode)}</span><div class="co">${x.owner===me?`<b>${esc(other)}</b>님이 내 시간을 신청했어요`:`내가 <b>${esc(other)}</b>님의 시간을 신청했어요`}${o?" · "+esc(o.co||"")+(o.f?" · "+esc(o.f):""):""}${x.memo?" · "+esc(x.memo):""}</div></div><div class="ac"><button class="act" data-sact="cancel" data-id="${esc(x.id)}">${x.owner===me?"신청 취소하고 다시 열기":"신청 취소"}</button>${x.owner===me?`<button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button>`:""}</div></div>`; };
+    return `<div class="row sl"><div><b>${fmtD(x.date)} ${esc(x.time)}</b> <span class="tg ok">확정</span> <span class="tg">${esc(x.mode)}</span><div class="co">${x.owner===me?`<b>${esc(other)}</b>님이 내 시간을 신청했어요`:`내가 <b>${esc(other)}</b>님의 시간을 신청했어요`}${o?" · "+esc(o.co||"")+(o.f?" · "+esc(o.f):""):""}${x.memo?" · "+esc(x.memo):""}</div></div><div class="ac">${calBtn(x)}<button class="act" data-sact="cancel" data-id="${esc(x.id)}">${x.owner===me?"신청 취소하고 다시 열기":"신청 취소"}</button>${x.owner===me?`<button class="act" data-sact="del" data-id="${esc(x.id)}">삭제</button>`:""}</div>${SC.calId===x.id?calChooser(x):""}</div>`; };
   body.innerHTML=`
     ${bannerHTML(all)}
     <div class="sec">내가 만날 수 있는 시간 열기 <small>(${esc(me)} 이름으로 저장돼요)</small></div>
@@ -376,6 +398,8 @@ sp.addEventListener("click",async e=>{
     setCell(c.dataset.d,c.dataset.t,eff(c.dataset.d,c.dataset.t).mode===SC.brush?null:SC.brush); refreshGrid(); return; }
   const b=e.target.closest("[data-sact]"); if(!b) return;
   const FB=window.FB, act=b.dataset.sact, sayS=(m,err)=>{ SC.msg=m; SC.err=!!err; renderSched(); };
+  if(act==="cal"){ SC.calId=SC.calId===b.dataset.id?null:b.dataset.id; renderSched(); return; }
+  if(act==="calgo"){ const x=FB&&FB.slots&&FB.slots.find(z=>z.id===b.dataset.id); if(!x) return; ls.set("cal_app",b.dataset.k); b.dataset.k==="google"?calGoogle(x):calIcs(x); SC.calId=null; SC.msg=b.dataset.k==="google"?"구글 캘린더 등록 화면을 열었어요. 저장을 눌러 마무리해 주세요.":"일정 파일을 내려받았어요. 파일을 열면 캘린더에 들어가요."; SC.err=false; renderSched(); return; }
   if(act==="brush"){ SC.brush=b.dataset.m; renderSched(); return; }
   if(act==="wk"){ SC.week=Math.max(0,Math.min(3,SC.week+ +b.dataset.v)); renderSched(); return; }
   if(act==="hday"){ bulk(rowTimes(weekDates()).map(t=>[b.dataset.d,t])); return; }
