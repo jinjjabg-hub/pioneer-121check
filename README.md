@@ -4,6 +4,7 @@ BNI 파이오니어 챕터 멤버가 서로 어느 단계까지 121을 했는지
 
 - `index.html`: 체크 페이지(파일 하나로 동작). 맨 위 `SHEET_URL`에 아래 웹앱 주소를 넣는다.
 - `apps-script.gs`: 구글시트에 붙이는 취합 스크립트.
+- `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon-32.png`: 폰 홈 화면에 추가할 때 쓰는 앱 이름과 아이콘. 안드로이드는 크롬 메뉴 → "홈 화면에 추가", 아이폰은 사파리 공유 → "홈 화면에 추가".
 - `firestore.rules`: 121 일정(Firebase Firestore, 프로젝트 `pioneer-121`)의 보안 규칙.
 
 ## 구글시트 만들기 (처음 한 번)
