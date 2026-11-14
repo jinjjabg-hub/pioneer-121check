@@ -6,6 +6,19 @@
 <title>파이오니어 121 체크</title>
 <meta name="description" content="BNI 파이오니어 챕터 121 체크와 일정. 누구와 어디까지 했는지, 언제 만날지 한눈에.">
 <meta name="theme-color" content="#15803d">
+<script>
+/* 카카오톡 안에서 열리면 인앱 브라우저 대신 바깥 브라우저로 다시 연다 (안드로이드=크롬, 아이폰=기본 브라우저) */
+(function(){ try{
+  var ua=navigator.userAgent||"", u=new URL(location.href);
+  if(!/KAKAOTALK/i.test(ua)||u.searchParams.has("nokk")) return;
+  if(/Android/i.test(ua)){
+    var fb=new URL(location.href); fb.searchParams.set("nokk","1");   // 크롬이 없으면 지금 화면 그대로 쓰도록 (무한 반복 방지)
+    location.replace("intent://"+u.host+u.pathname+u.search+"#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url="+encodeURIComponent(fb.href)+";end");
+  }else{
+    location.replace("kakaotalk://web/openExternal?url="+encodeURIComponent(location.href));
+  }
+}catch(e){} })();
+</script>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
