@@ -7,6 +7,9 @@ BNI 파이오니어 챕터 멤버가 서로 어느 단계까지 121을 했는지
 - `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`, `favicon-32.png`: 폰 홈 화면에 추가할 때 쓰는 앱 이름과 아이콘. 안드로이드는 크롬 메뉴 → "홈 화면에 추가", 아이폰은 사파리 공유 → "홈 화면에 추가".
 - `firestore.rules`: 121 일정(Firebase Firestore, 프로젝트 `pioneer-121`)의 보안 규칙.
 
+## 카카오톡으로 받은 링크
+카카오톡 안에서 링크를 열면 `index.html` 맨 위 스크립트가 바깥 브라우저로 다시 연다. 안드로이드는 **크롬**(`intent://`, 크롬이 없으면 지금 화면 그대로), 아이폰은 카카오톡의 외부 브라우저 열기(`kakaotalk://web/openExternal`)라서 **기본 브라우저(보통 사파리)**로 열린다. 주소 뒤 `#check` 같은 부분은 안드로이드에서 빠진다.
+
 ## 구글시트 만들기 (처음 한 번)
 1. 새 구글시트 `파이오니어 121 체크` 생성 → 확장 프로그램 → Apps Script
 2. 기존 코드를 지우고 `apps-script.gs` 내용을 붙여넣고 저장
