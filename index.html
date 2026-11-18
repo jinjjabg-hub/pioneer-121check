@@ -180,7 +180,6 @@ const $ = id => document.getElementById(id);
 const key = n => "121check:" + n;
 const ls = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
 
-$("me").innerHTML += M.map(m => `<option>${m.n}</option>`).join("");
 $("me").onchange = e => pick(e.target.value);
 $("q").oninput = render;
 
@@ -205,8 +204,8 @@ function render() {
   const rows = M.filter(m => m.n !== me && (!q || (m.n + (m.co || "")).includes(q)));
   $("list").innerHTML = rows.map(m => {
     const v = ans[m.n] || 0;
-    return `<div class="row"><span class="nm">${m.n}</span>${m.role ? ` <span class="rb">${m.role}</span>` : ""} <span class="co">${m.co || ""}${m.f ? " · " + m.f : ""}</span>
-    <div class="lv">${LV.map((t, i) => `<button class="${i === v ? "on l" + i : ""}" data-n="${m.n}" data-l="${i}">${t}</button>`).join("")}</div></div>`;
+    return `<div class="row"><span class="nm">${esc(m.n)}</span>${m.role ? ` <span class="rb">${esc(m.role)}</span>` : ""} <span class="co">${esc(m.co || "")}${m.f ? " · " + esc(m.f) : ""}</span>
+    <div class="lv">${LV.map((t, i) => `<button class="${i === v ? "on l" + i : ""}" data-n="${esc(m.n)}" data-l="${i}">${t}</button>`).join("")}</div></div>`;
   }).join("");
   stat();
 }
@@ -236,7 +235,8 @@ $("sv").onclick = async () => {
   $("sv").disabled = false;
 };
 /* ===== 121 일정 (Firebase Firestore): 칸을 눌러 시간을 열고, 열린 시간을 눌러 신청하면 확정 ===== */
-const wrap=document.querySelector(".w"), byN=Object.fromEntries(M.map(m=>[m.n,m]));
+const wrap=document.querySelector(".w");
+let byN={};   // 이름 → 멤버 (setMembers가 채운다)
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const SC={week:0,brush:"대면",calId:null,draft:new Map(),memo:"",msg:"",err:false,fMode:"전체",fCell:null,q:"",drag:null,skipClick:false};
 const SC_TIMES=[]; for(let h=9;h<=18;h++) SC_TIMES.push(String(h).padStart(2,"0")+":00");   // 09:00~18:00, 1시간 단위
@@ -448,8 +448,26 @@ sp.addEventListener("click",async e=>{
 });
 window.SCHED_RENDER=()=>{ if(onSched()) renderSched(); };   // Firebase 쪽이 데이터가 바뀔 때 부른다
 /* ===== 로그인: 이름 + 전화번호 뒤 4자리 (Firebase 로그인 기록 + 구글시트 확인) ===== */
-$("lgName").innerHTML += M.map(m => `<option>${esc(m.n)}</option>`).join("");
-{ const P = new URLSearchParams(location.search).get("me") || ls.get("121check:me"); if (P && M.some(m => m.n === P)) $("lgName").value = P; }   // 선샤인에서 ?me=이름 으로 열면 이름이 미리 골라져 있다
+/* ===== 멤버 명단: 구글시트 '멤버' 탭이 원본 =====
+   먼저 이 기기에 저장해 둔 명단(없으면 이 파일의 MEMBERS)으로 그리고, 시트에서 명단이 오면 바꿔 그린다.
+   시트에 연결이 안 돼도 마지막 명단으로 그대로 쓸 수 있다. */
+function setMembers(list) {
+  M = list; byN = Object.fromEntries(M.map(m => [m.n, m]));
+  // 선샤인에서 ?me=이름 으로 열면 이름이 미리 골라져 있다
+  const P = $("lgName").value || new URLSearchParams(location.search).get("me") || ls.get("121check:me"), cur = $("me").value;
+  const opts = M.map(m => `<option>${esc(m.n)}</option>`).join("");
+  $("lgName").innerHTML = `<option value="">이름을 선택하세요</option>` + opts;
+  $("me").innerHTML = `<option value="">내 이름을 선택하세요</option>` + opts;
+  if (P && byN[P]) $("lgName").value = P;
+  if (cur && byN[cur]) $("me").value = cur;
+  if (me) render();
+  window.SCHED_RENDER();
+}
+const goodList = x => Array.isArray(x) && x.length > 0 && x.every(m => m && typeof m.n === "string" && m.n);
+{ let c = null; try { c = JSON.parse(ls.get("121check:members") || "null"); } catch (e) {} setMembers(goodList(c) ? c : MEMBERS); }
+if (SHEET_URL) fetch(SHEET_URL + "?members=1").then(r => r.json()).then(d => {
+  if (goodList(d && d.members)) { ls.set("121check:members", JSON.stringify(d.members)); setMembers(d.members); }
+}).catch(() => {});
 const lgSay = (m, err) => { const e = $("lgMsg"); e.textContent = m; e.classList.toggle("err", !!err); };
 function enter(name, pin) {   // 로그인 성공: 화면을 열고 내 데이터를 불러온다
   PIN = pin; $("me").value = name; wrap.classList.remove("nologin"); $("ubName").textContent = name; lgSay(""); $("lgPin").value = "";

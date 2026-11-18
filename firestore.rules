@@ -3,49 +3,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // ── 로그인(전화번호 뒤 4자리) ─────────────────────────────────────────────
-    // 이 파일의 '____' 자리에는 각자의 전화번호 뒤 4자리가 들어가야 하지만, 번호는 저장소에 올리지 않는다.
-    // Firebase 콘솔 > Firestore Database > 규칙 에 붙여 넣을 때만 실제 번호로 바꾼다.
-    function pins() {
-      return {
-        '송승훈': '____',
-        '이상호': '____',
-        '조현우': '____',
-        '김근우': '____',
-        '김경태': '____',
-        '김지현': '____',
-        '심학봉': '____',
-        '이화춘': '____',
-        '이소연': '____',
-        '임춘식': '____',
-        '정명수': '____',
-        '홍정택': '____',
-        '박진성': '____',
-        '박미성': '____',
-        '이채홍': '____',
-        '조은영': '____',
-        '박선영': '____',
-        '정상현': '____',
-        '이도현': '____',
-        '마루이': '____',
-        '문성우': '____',
-        '윤민수': '____',
-        '이수민': '____',
-        '박지형': '____',
-        '박병준': '____',
-        '조진성': '____',
-        '이해경': '____',
-        '이은성': '____',
-        '오예준': '____',
-        '이훈': '____',
-        '김여련': '____',
-        '최소은': '____',
-        '이다경': '____',
-        '송이': '____',
-        '이은주': '____',
-        '이서원': '____',
-        '이헌영': '____',
-        '김성일': '____'
-      };
+    // 번호는 이 파일에 없다. 구글시트 '멤버' 탭이 원본이고, Apps Script가 Firestore 문서
+    // private/pins ({이름: 번호})로 복사한다. 이 문서는 앱에서 읽거나 쓸 수 없고, 규칙만 확인한다.
+    function pinOk(name, pin) {
+      let p = get(/databases/$(database)/documents/private/pins).data;
+      return name in p && p[name] == pin;
     }
     function signedIn() {
       return request.auth != null
@@ -63,7 +25,12 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['name','pin'])
         && request.resource.data.name is string
         && request.resource.data.pin is string
-        && pins()[request.resource.data.name] == request.resource.data.pin;
+        && pinOk(request.resource.data.name, request.resource.data.pin);
+    }
+
+    // 번호 목록: 앱에서는 읽기·쓰기 모두 막는다 (Apps Script가 서비스 계정으로만 쓴다)
+    match /private/{doc} {
+      allow read, write: if false;
     }
 
     // 121 일정: 누구나 읽고, 로그인한 본인 이름으로만 열기·신청·취소·삭제
